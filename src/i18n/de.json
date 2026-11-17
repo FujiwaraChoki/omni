@@ -11,7 +11,10 @@
   "Firmware %1": "Firmware %1",
   "Mixed": "Gemischt",
   "Next keyboard": "Nächste Tastatur",
-  "%n keys selected": { "one": "%n Taste ausgewählt", "other": "%n Tasten ausgewählt" },
+  "%n keys selected": {
+    "one": "%n Taste ausgewählt",
+    "other": "%n Tasten ausgewählt"
+  },
   "No supported keyboard found": "Keine unterstützte Tastatur gefunden",
   "Own": "Eigene",
   "Plug in a SteelSeries Apex Pro TKL Gen 3 or a Wooting 60HE v2.": "Schließe eine SteelSeries Apex Pro TKL Gen 3 oder eine Wooting 60HE v2 an.",
@@ -33,5 +36,7 @@
   "Could not read the %1: %2": "%1 konnte nicht gelesen werden: %2",
   "Could not set the colours: %1": "Farben konnten nicht gesetzt werden: %1",
   "Could not update the %1: %2": "%1 konnte nicht aktualisiert werden: %2",
-  "Could not save to the %1: %2": "Speichern auf %1 fehlgeschlagen: %2"
+  "Could not save to the %1: %2": "Speichern auf %1 fehlgeschlagen: %2",
+  "All": "Alle",
+  "None": "Keine"
 }

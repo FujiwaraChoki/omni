@@ -126,11 +126,36 @@ ApplicationWindow {
                 Layout.fillHeight: true
             }
 
-            Label {
-                text: sel.count > 0 ? qsTr("%n keys selected", "", sel.count)
-                                    : qsTr("Click keys, or drag across them, to change them")
-                color: "#6e6e76"
-                font.pixelSize: 12
+            RowLayout {
+                spacing: 16
+                Label {
+                    text: sel.count > 0 ? qsTr("%n keys selected", "", sel.count)
+                                        : qsTr("Click keys, or drag across them, to change them")
+                    color: "#6e6e76"
+                    font.pixelSize: 12
+                }
+                Item { Layout.fillWidth: true }
+                Repeater {
+                    model: [
+                        { label: qsTr("All"), action: () => backend.selectAll() },
+                        { label: qsTr("None"), action: () => backend.selectNone() },
+                    ]
+                    delegate: Label {
+                        required property var modelData
+                        text: modelData.label
+                        color: link.containsMouse ? "white" : "#8a8a93"
+                        font.pixelSize: 12
+                        font.weight: Font.Medium
+                        MouseArea {
+                            id: link
+                            anchors.fill: parent
+                            anchors.margins: -6
+                            hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: parent.modelData.action()
+                        }
+                    }
+                }
             }
 
             Rectangle {
