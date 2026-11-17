@@ -9,7 +9,7 @@ without the vendor's Windows software.
 
 | Keyboard | Actuation | Rapid Trigger | Colour | Saved on the keyboard |
 |---|---|---|---|---|
-| SteelSeries Apex Pro TKL Gen 3 (wired, `1038:1642`) | 0.1–4.0 mm per key | on/off and sensitivity per key | per key, live | actuation and Rapid Trigger: see below |
+| SteelSeries Apex Pro TKL Gen 3 (wired, `1038:1642`) | per key, the 20 depths its own menu offers (0.1–4.0 mm) | on/off and sensitivity per key | per key, live | actuation and Rapid Trigger: see below |
 | Wooting 60HE v2 (`31e3:1340`–`1342`) | 0.1–4.0 mm per key, 0.05 mm steps | on/off, press and release per key | per key, live | yes, into the active profile slot |
 
 Colours are kept in `~/.config/omni/` and sent again whenever the keyboard is plugged in, because neither keyboard
