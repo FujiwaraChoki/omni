@@ -1,0 +1,2 @@
+# Lets the logged-in user talk to SteelSeries Apex Pro Gen 3 keyboards without root.
+KERNEL=="hidraw*", ATTRS{idVendor}=="1038", ATTRS{idProduct}=="1640|1642|1644|1646", TAG+="uaccess"

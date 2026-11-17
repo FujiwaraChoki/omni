@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Omni
+Comment=Tune your SteelSeries Apex Pro keyboard
+Comment[de]=SteelSeries-Apex-Pro-Tastatur einstellen
+Exec=omni
+Icon=omni
+Terminal=false
+Categories=Utility;Settings;HardwareSettings;
+StartupWMClass=omni
