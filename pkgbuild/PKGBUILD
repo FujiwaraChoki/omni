@@ -1,0 +1,24 @@
+pkgname=omni
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='Tune analog keyboards: actuation, Rapid Trigger and per-key colour'
+arch=('x86_64' 'aarch64')
+license=('MIT')
+depends=('qt6-base' 'qt6-declarative' 'qt6-wayland')
+makedepends=('gcc' 'make')
+source=()
+sha256sums=()
+
+build() {
+  cd "$startdir/.."
+  ./bin/build
+}
+
+package() {
+  cd "$startdir/.."
+  install -Dm755 build/omni "$pkgdir/usr/bin/omni"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$startdir/omni.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/omni.svg"
+  install -Dm644 "$startdir/omni.desktop" "$pkgdir/usr/share/applications/omni.desktop"
+  install -Dm644 "$startdir/70-omni.rules" "$pkgdir/usr/lib/udev/rules.d/70-omni.rules"
+}
