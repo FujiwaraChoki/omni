@@ -3,11 +3,15 @@ import QtQuick.Controls
 import QtQuick.Controls.Material
 import QtQuick.Layouts
 
-// A picture or GIF on the keyboard's screen, with a pixel-exact preview.
-RowLayout {
+// A picture or GIF on the keyboard's screen, with a pixel-exact preview, and
+// GIPHY search underneath.
+ColumnLayout {
     id: panel
-    spacing: 28
+    spacing: 16
     readonly property var s: backend.screen
+
+  RowLayout {
+    spacing: 28
 
     // The screen, three times its size, every pixel square.
     Rectangle {
@@ -76,4 +80,7 @@ RowLayout {
             Layout.fillWidth: true
         }
     }
+  }
+
+    GifStrip { Layout.fillWidth: true }
 }

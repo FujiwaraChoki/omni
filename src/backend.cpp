@@ -655,7 +655,7 @@ QVariantMap Backend::screen() const {
         return {};
     const ScreenSettings &s = d->config.screen;
     return {{"available", d->keyboard->screenSize().isValid()}, {"active", s.active()},
-            {"name", QFileInfo(s.file).fileName()}, {"fit", s.fit}, {"dither", s.dither}, {"invert", s.invert},
+            {"name", s.name.isEmpty() ? QFileInfo(s.file).fileName() : s.name}, {"fit", s.fit}, {"dither", s.dither}, {"invert", s.invert},
             {"frames", d->frames.count()}, {"width", d->keyboard->screenSize().width()}, {"height", d->keyboard->screenSize().height()}};
 }
 
@@ -692,7 +692,7 @@ void Backend::editScreen(const std::function<void(ScreenSettings &)> &apply) {
     m_saveTimer.start();
 }
 
-bool Backend::setScreenPicture(const QString &file) {
+bool Backend::setScreenPicture(const QString &file, const QString &name) {
     Device *d = device();
     if (!d || !d->keyboard->screenSize().isValid())
         return false;
@@ -712,7 +712,8 @@ bool Backend::setScreenPicture(const QString &file) {
         return false;
     }
     setError({});
-    editScreen([&](ScreenSettings &s) { s.file = stored; });
+    const QString shown = name.isEmpty() ? QFileInfo(file).fileName() : name;
+    editScreen([&](ScreenSettings &s) { s.file = stored; s.name = shown; });
     return true;
 }
 

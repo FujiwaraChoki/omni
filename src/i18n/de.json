@@ -87,5 +87,21 @@
   "Could not read the screen picture: %1": "Das Displaybild konnte nicht gelesen werden: %1",
   "Could not save %1": "%1 konnte nicht gespeichert werden",
   "Could not start the lighting service": "Der Beleuchtungsdienst konnte nicht gestartet werden",
-  "Pictures": "Bilder"
+  "Pictures": "Bilder",
+  "Search GIFs with your own free GIPHY key:": "GIFs mit deinem eigenen kostenlosen GIPHY-Schlüssel suchen:",
+  "get one": "Schlüssel holen",
+  "Paste the API key, then Enter": "API-Schlüssel einfügen, dann Enter",
+  "Search GIPHY, then Enter": "GIPHY durchsuchen, dann Enter",
+  "Searching…": "Suche …",
+  "Forget key": "Schlüssel vergessen",
+  "That doesn't look like a GIPHY API key": "Das sieht nicht wie ein GIPHY-API-Schlüssel aus",
+  "Could not save the key": "Der Schlüssel konnte nicht gespeichert werden",
+  "GIPHY did not accept the key": "GIPHY hat den Schlüssel nicht akzeptiert",
+  "GIPHY's free key allows 100 searches an hour; try again later": "Der kostenlose GIPHY-Schlüssel erlaubt 100 Suchen pro Stunde; versuch es später wieder",
+  "Could not reach GIPHY: %1": "GIPHY ist nicht erreichbar: %1",
+  "Unexpected address for that GIF": "Unerwartete Adresse für dieses GIF",
+  "Could not download the GIF: %1": "Das GIF konnte nicht geladen werden: %1",
+  "GIPHY sent something that isn't a GIF": "GIPHY hat kein GIF geschickt",
+  "Could not save the GIF": "Das GIF konnte nicht gespeichert werden",
+  "GIF from GIPHY": "GIF von GIPHY"
 }

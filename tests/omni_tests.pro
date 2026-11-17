@@ -1,4 +1,4 @@
-QT += core gui quick quickcontrols2 testlib dbus
+QT += core gui quick quickcontrols2 testlib dbus network
 CONFIG += c++17 testcase
 TARGET = omni_tests
 TEMPLATE = app

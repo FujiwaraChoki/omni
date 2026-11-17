@@ -15,6 +15,7 @@
 #include <unistd.h>
 
 #include "backend.h"
+#include "gifsearch.h"
 #include "service.h"
 #include "theme.h"
 #include "translator.h"
@@ -95,6 +96,8 @@ int main(int argc, char *argv[]) {
     engine.rootContext()->setContextProperty("theme", &theme);
     engine.rootContext()->setContextProperty("backend", &backend);
     engine.addImageProvider("omni", new ScreenImages(&backend));
+    GifSearch gifs(&backend);
+    engine.rootContext()->setContextProperty("gifs", &gifs);
     engine.load(QUrl("qrc:/Main.qml"));
     if (engine.rootObjects().isEmpty())
         return 1;

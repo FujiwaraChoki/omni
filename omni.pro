@@ -1,4 +1,4 @@
-QT += core gui qml quick quickcontrols2 dbus
+QT += core gui qml quick quickcontrols2 dbus network
 
 CONFIG += c++17 release
 TARGET = omni
@@ -9,6 +9,7 @@ HEADERS += \
     src/backend.h \
     src/config.h \
     src/effects.h \
+    src/gifsearch.h \
     src/hidraw.h \
     src/keyboard.h \
     src/layout.h \
@@ -25,6 +26,7 @@ SOURCES += \
     src/backend.cpp \
     src/config.cpp \
     src/effects.cpp \
+    src/gifsearch.cpp \
     src/hidraw.cpp \
     src/keyboard.cpp \
     src/layout.cpp \

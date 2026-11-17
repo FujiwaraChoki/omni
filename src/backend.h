@@ -84,7 +84,8 @@ public:
     Q_INVOKABLE void setReactive(const QString &reactive);
 
     Q_INVOKABLE void chooseScreenPicture();          // through the desktop's file chooser
-    Q_INVOKABLE bool setScreenPicture(const QString &file); // copies the file; false if it is not a picture
+    // Copies the file and shows it; false if it is not a picture. `name` defaults to the file's own name.
+    Q_INVOKABLE bool setScreenPicture(const QString &file, const QString &name = {});
     Q_INVOKABLE void setScreenFit(const QString &fit);
     Q_INVOKABLE void setScreenDither(bool dither);
     Q_INVOKABLE void setScreenInvert(bool invert);

@@ -8,6 +8,7 @@
 // What the keyboard's screen should show.
 struct ScreenSettings {
     QString file;                         // a GIF or still image omni keeps a copy of; empty = the keyboard's own
+    QString name;                         // what to call it: the original file name, or a GIF's title
     QString fit = QStringLiteral("fit");  // fit (whole picture, black bars) or fill (cropped to the screen)
     bool dither = true;                   // error diffusion for photos; off = plain threshold for line art
     bool invert = false;

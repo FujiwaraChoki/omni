@@ -3,6 +3,9 @@
 #include <QSignalSpy>
 #include <QTemporaryDir>
 #include <QtTest>
+#include <QJsonArray>
+#include <QJsonDocument>
+#include <QJsonObject>
 
 #include "apexdriver.h"
 #include "backend.h"
@@ -16,6 +19,7 @@
 #include "effects.h"
 #include "screen.h"
 #include "service.h"
+#include "gifsearch.h"
 
 // A keyboard that only remembers what it was sent.
 class FakeKeyboard : public Keyboard {
@@ -432,6 +436,40 @@ private slots:
         QCOMPARE(codeForUsage(0x2C), QString("Space"));
         QCOMPARE(codeForEvdev(30), QString("KeyA"));
         QCOMPARE(codeForEvdev(86), QString("IntlBackslash"));
+    }
+
+    void giphyAnswersBecomeResults()
+    {
+        // Built from objects rather than a raw string: moc misreads braces inside raw strings.
+        const QJsonObject cat{{"id", "a1"}, {"title", "cat"}, {"images", QJsonObject{
+            {"fixed_height_small", QJsonObject{{"url", "https://media2.giphy.com/media/a1/100.gif"}, {"width", "178"}}},
+            {"fixed_width", QJsonObject{{"url", "https://media2.giphy.com/media/a1/200w.gif"}}}}}};
+        const QJsonObject bare{{"id", "b2"}, {"title", "no renditions"}, {"images", QJsonObject{}}};
+        const QByteArray json = QJsonDocument(QJsonObject{{"data", QJsonArray{cat, bare}},
+            {"pagination", QJsonObject{{"total_count", 512}, {"count", 2}, {"offset", 0}}}}).toJson();
+        int total = 0;
+        const QVariantList rows = GifSearch::parse(json, &total);
+        QCOMPARE(total, 512);
+        QCOMPARE(rows.size(), 1);
+        QCOMPARE(rows[0].toMap().value("file").toString(), QString("https://media2.giphy.com/media/a1/200w.gif"));
+        QCOMPARE(rows[0].toMap().value("width").toInt(), 178);
+    }
+
+    void giphyKeysAreCheckedAndPrivate()
+    {
+        QTemporaryDir dir;
+        Backend backend(nullptr, [] { return QList<HidNode>{}; }, dir.path(), false);
+        GifSearch gifs(&backend, dir.path() + "/giphy.key");
+        QVERIFY(!gifs.hasKey());
+        QVERIFY(!gifs.setKey("not a key!"));
+        QVERIFY(!gifs.hasKey());
+        QVERIFY(gifs.setKey("  abcdefghijklmnopqrstuvwxyzABCDEF \n"));
+        QVERIFY(gifs.hasKey());
+        QCOMPARE(QFileInfo(dir.path() + "/giphy.key").permissions() & (QFile::ReadGroup | QFile::ReadOther), QFileDevice::Permissions());
+        GifSearch again(&backend, dir.path() + "/giphy.key");
+        QVERIFY(again.hasKey());
+        again.forgetKey();
+        QVERIFY(!QFile::exists(dir.path() + "/giphy.key"));
     }
 
     void themeFallsBack()

@@ -19,6 +19,22 @@ Each driver talks to the keyboard's configuration interface directly over hidraw
 allowlist; firmware update, factory reset, profile erase and flash-layout commands are refused in code. The protocol
 notes, with their sources, are in [`docs/`](docs/).
 
+## Lighting and the screen
+
+The **Lighting** tab draws effects on the computer and streams them to the keyboard: static per-key colours,
+breathing, spectrum, wave, aurora, starlight and rain, with glow, ripple or heatmap reactions to key presses, in your
+Omarchy theme's colours, a rainbow or your own. The **Screen** tab puts a GIF or picture on the Apex's OLED, dithered
+to its 128 × 40 pixels, from a file or from a GIPHY search.
+
+Both are drawn by `omni lighting`, a systemd user service (`omni-lighting.service`) that Omni starts the first time
+you use them, so they keep running after the window closes. It reads each keyboard's settings from
+`~/.config/omni/<keyboard>.json`, reads key presses from the keyboard only while a reaction is on (in memory, never
+stored), and hands lighting and the screen back to the keyboard when it stops:
+`systemctl --user disable --now omni-lighting`.
+
+GIF search needs your own free [GIPHY API key](https://developers.giphy.com/dashboard/) (100 searches an hour). It is
+kept in `~/.config/omni/giphy.key`, readable only by you; only your searches go to GIPHY, when you press Enter.
+
 ## Use
 
 | Key | Does |
@@ -31,6 +47,7 @@ notes, with their sources, are in [`docs/`](docs/).
 | ↑ / ↓ | Actuation shallower or deeper |
 | Space | Rapid Trigger on or off |
 | [ / ] | Rapid Trigger sensitivity |
+| 1 / 2 / 3 | Keys, Lighting, Screen |
 | Tab | Next keyboard |
 | Ctrl+Z / Ctrl+Shift+Z | Undo / redo |
 | ? | Show every shortcut |

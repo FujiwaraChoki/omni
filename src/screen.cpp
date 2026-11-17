@@ -5,12 +5,13 @@
 #include <vector>
 
 QJsonObject ScreenSettings::toJson() const {
-    return {{"file", file}, {"fit", fit}, {"dither", dither}, {"invert", invert}};
+    return {{"file", file}, {"name", name}, {"fit", fit}, {"dither", dither}, {"invert", invert}};
 }
 
 ScreenSettings ScreenSettings::fromJson(const QJsonObject &o) {
     ScreenSettings s;
     s.file = o.value("file").toString();
+    s.name = o.value("name").toString();
     s.fit = o.value("fit").toString(s.fit);
     s.dither = o.value("dither").toBool(s.dither);
     s.invert = o.value("invert").toBool(s.invert);
