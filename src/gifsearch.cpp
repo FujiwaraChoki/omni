@@ -181,6 +181,8 @@ void GifSearch::use(int index) {
             return;
         }
         file.close();
-        m_backend->setScreenPicture(file.fileName(), title.isEmpty() ? tr("GIF from GIPHY") : title);
+        // GIPHY's GIFs are mostly square-ish and the screen is wide, so fill it
+        // rather than show a sliver; Fit is one click away.
+        m_backend->setScreenPicture(file.fileName(), title.isEmpty() ? tr("GIF from GIPHY") : title, "fill");
     });
 }

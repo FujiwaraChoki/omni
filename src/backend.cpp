@@ -692,7 +692,7 @@ void Backend::editScreen(const std::function<void(ScreenSettings &)> &apply) {
     m_saveTimer.start();
 }
 
-bool Backend::setScreenPicture(const QString &file, const QString &name) {
+bool Backend::setScreenPicture(const QString &file, const QString &name, const QString &fit) {
     Device *d = device();
     if (!d || !d->keyboard->screenSize().isValid())
         return false;
@@ -713,7 +713,12 @@ bool Backend::setScreenPicture(const QString &file, const QString &name) {
     }
     setError({});
     const QString shown = name.isEmpty() ? QFileInfo(file).fileName() : name;
-    editScreen([&](ScreenSettings &s) { s.file = stored; s.name = shown; });
+    editScreen([&](ScreenSettings &s) {
+        s.file = stored;
+        s.name = shown;
+        if (fit == "fit" || fit == "fill")
+            s.fit = fit;
+    });
     return true;
 }
 
