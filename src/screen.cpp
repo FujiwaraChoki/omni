@@ -72,7 +72,9 @@ bool ScreenFrames::load(const QString &file, const ScreenSettings &settings, QSi
         if (error) *error = reader.errorString();
         return false;
     }
-    while (m_frames.size() < 600) {
+    // read() moves on to the next frame by itself; Qt's GIF reader has no
+    // jumpToNextImage(), so asking for that ended the loop after one frame.
+    while (m_frames.size() < 600 && reader.canRead()) {
         const QImage image = reader.read();
         if (image.isNull())
             break;
@@ -81,7 +83,7 @@ bool ScreenFrames::load(const QString &file, const ScreenSettings &settings, QSi
         const int delay = reader.nextImageDelay();
         m_delays << (delay <= 10 ? 100 : qMax(33, delay));
         m_total += m_delays.last();
-        if (!reader.supportsAnimation() || !reader.jumpToNextImage())
+        if (!reader.supportsAnimation())
             break;
     }
     if (m_frames.isEmpty()) {

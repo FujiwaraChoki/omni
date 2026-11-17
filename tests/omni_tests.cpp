@@ -408,6 +408,20 @@ private slots:
         QCOMPARE(ScreenFrames::toMono(black, {128, 40}, s).constScanLine(20)[64], uchar(255));
     }
 
+    void animatedGifsKeepEveryFrame()
+    {
+        // A three-frame GIF made with Qt can't be written (no GIF encoder), so
+        // the test GIF ships beside the tests.
+        ScreenFrames frames;
+        QString error;
+        QVERIFY2(frames.load(QFINDTESTDATA("data/three-frames.gif"), {}, {128, 40}, &error), qPrintable(error));
+        QCOMPARE(frames.count(), 3);
+        QCOMPARE(frames.delay(0), 200);
+        QCOMPARE(frames.frameAt(0), 0);
+        QCOMPARE(frames.frameAt(250), 1);
+        QCOMPARE(frames.frameAt(650), 0); // loops
+    }
+
     void apexScreenUsesEightRowPages()
     {
         QImage img(128, 40, QImage::Format_Grayscale8);
