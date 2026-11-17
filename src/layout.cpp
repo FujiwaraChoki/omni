@@ -65,6 +65,39 @@ public:
 
 } // namespace
 
+QString codeForUsage(quint8 usage) {
+    static const QHash<quint8, QString> map = [] {
+        QHash<quint8, QString> m;
+        for (const auto &k : kKeys)
+            if (!m.contains(k.usage))
+                m.insert(k.usage, QString::fromLatin1(k.code));
+        return m;
+    }();
+    return map.value(usage);
+}
+
+QString codeForEvdev(int keycode) {
+    // Linux input key codes (linux/input-event-codes.h) for the keys omni draws.
+    static const QHash<int, QString> map{
+    {1, "Escape"}, {2, "Digit1"}, {3, "Digit2"}, {4, "Digit3"}, {5, "Digit4"}, {6, "Digit5"},
+    {7, "Digit6"}, {8, "Digit7"}, {9, "Digit8"}, {10, "Digit9"}, {11, "Digit0"}, {12, "Minus"},
+    {13, "Equal"}, {14, "Backspace"}, {15, "Tab"}, {16, "KeyQ"}, {17, "KeyW"}, {18, "KeyE"},
+    {19, "KeyR"}, {20, "KeyT"}, {21, "KeyY"}, {22, "KeyU"}, {23, "KeyI"}, {24, "KeyO"},
+    {25, "KeyP"}, {26, "BracketLeft"}, {27, "BracketRight"}, {28, "Enter"}, {29, "ControlLeft"}, {30, "KeyA"},
+    {31, "KeyS"}, {32, "KeyD"}, {33, "KeyF"}, {34, "KeyG"}, {35, "KeyH"}, {36, "KeyJ"},
+    {37, "KeyK"}, {38, "KeyL"}, {39, "Semicolon"}, {40, "Quote"}, {41, "Backquote"}, {42, "ShiftLeft"},
+    {43, "Backslash"}, {44, "KeyZ"}, {45, "KeyX"}, {46, "KeyC"}, {47, "KeyV"}, {48, "KeyB"},
+    {49, "KeyN"}, {50, "KeyM"}, {51, "Comma"}, {52, "Period"}, {53, "Slash"}, {54, "ShiftRight"},
+    {56, "AltLeft"}, {57, "Space"}, {58, "CapsLock"}, {59, "F1"}, {60, "F2"}, {61, "F3"},
+    {62, "F4"}, {63, "F5"}, {64, "F6"}, {65, "F7"}, {66, "F8"}, {67, "F9"},
+    {68, "F10"}, {70, "ScrollLock"}, {86, "IntlBackslash"}, {87, "F11"}, {88, "F12"}, {97, "ControlRight"},
+    {99, "PrintScreen"}, {100, "AltRight"}, {102, "Home"}, {103, "ArrowUp"}, {104, "PageUp"}, {105, "ArrowLeft"},
+    {106, "ArrowRight"}, {107, "End"}, {108, "ArrowDown"}, {109, "PageDown"}, {110, "Insert"}, {111, "Delete"},
+    {119, "Pause"}, {125, "MetaLeft"}, {126, "MetaRight"}, {127, "ContextMenu"}, {164, "MediaPlayPause"}
+    };
+    return map.value(keycode);
+}
+
 quint8 hidUsage(const QString &code) {
     const auto *info = catalog().value(code);
     return info ? info->usage : 0;

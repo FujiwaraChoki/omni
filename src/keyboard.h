@@ -1,6 +1,8 @@
 #pragma once
 
 #include <QColor>
+#include <QImage>
+#include <QSize>
 #include <QHash>
 #include <QList>
 #include <QString>
@@ -65,6 +67,25 @@ public:
     virtual bool commit(QString *error) { Q_UNUSED(error); return true; }
     // Hands lighting back to the keyboard's own effects.
     virtual bool restoreLighting(QString *error) = 0;
+
+    // A small monochrome screen, if the keyboard has one: its size in pixels,
+    // showing a picture (white pixels light up), and handing it back.
+    virtual QSize screenSize() const { return {}; }
+    virtual bool showScreen(const QImage &image, QString *error) { Q_UNUSED(image); Q_UNUSED(error); return false; }
+    virtual bool releaseScreen(QString *error) { Q_UNUSED(error); return true; }
+
+    // The hidraw nodes that carry the keyboard's own key reports, which
+    // reactive lighting listens to. Only opened while such an effect is on.
+    virtual QList<HidNode> keyInputs() const { return m_inputs; }
+    void setNodes(const QList<HidNode> &nodes) {
+        m_inputs.clear();
+        for (const auto &n : nodes)
+            if (n.usagePage == 0x01 && n.keyboard)
+                m_inputs << n;
+    }
+
+private:
+    QList<HidNode> m_inputs;
 };
 
 // How a driver says which devices it handles and builds itself from the

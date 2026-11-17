@@ -21,4 +21,5 @@ package() {
   install -Dm644 "$startdir/omni.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/omni.svg"
   install -Dm644 "$startdir/omni.desktop" "$pkgdir/usr/share/applications/omni.desktop"
   install -Dm644 "$startdir/70-omni.rules" "$pkgdir/usr/lib/udev/rules.d/70-omni.rules"
+  install -Dm644 "$startdir/omni-lighting.service" "$pkgdir/usr/lib/systemd/user/omni-lighting.service"
 }

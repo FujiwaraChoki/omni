@@ -17,9 +17,9 @@ double Range::snap(double v) const {
 const QList<Driver> &drivers() {
     static const QList<Driver> list{
         {QStringLiteral("SteelSeries Apex Pro TKL Gen 3"), &ApexDriver::matches,
-         [](const QList<HidNode> &nodes) -> Keyboard * { return new ApexDriver(nodes); }},
+         [](const QList<HidNode> &nodes) -> Keyboard * { auto *k = new ApexDriver(nodes); k->setNodes(nodes); return k; }},
         {QStringLiteral("Wooting 60HE v2"), &WootingDriver::matches,
-         [](const QList<HidNode> &nodes) -> Keyboard * { return new WootingDriver(nodes); }},
+         [](const QList<HidNode> &nodes) -> Keyboard * { auto *k = new WootingDriver(nodes); k->setNodes(nodes); return k; }},
     };
     return list;
 }

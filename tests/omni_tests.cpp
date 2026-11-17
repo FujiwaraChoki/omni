@@ -12,6 +12,10 @@
 #include "theme.h"
 #include "translator.h"
 #include "wootingdriver.h"
+#include "config.h"
+#include "effects.h"
+#include "screen.h"
+#include "service.h"
 
 // A keyboard that only remembers what it was sent.
 class FakeKeyboard : public Keyboard {
@@ -266,6 +270,144 @@ private slots:
         QVERIFY(m.rapidTriggerProfile.contains(QByteArray::fromHex("0a12" "0842086108620863" "1208" "08e68401" "10cd8901")));
         QVERIFY(m.rapidTriggerProfile.contains(QByteArray::fromHex("0a04" "0820" "1800")));
         QCOMPARE(m.rapidTriggerProfile.size(), 20 + 6);
+    }
+
+    void effectsDrawStaticColoursAndBrightness()
+    {
+        Effects fx(buildLayout(Form::Sixty, Region::Ansi, {"AltRight", "Fn", "ControlRight"}));
+        Lighting l;
+        l.effect = "static";
+        l.keyColors["KeyA"] = QColor(200, 100, 0);
+        l.brightness = 0.5;
+        fx.setLighting(l, {QColor("#ffffff")});
+        const auto frame = fx.render(1.0);
+        QCOMPARE(frame.size(), 60);
+        QCOMPARE(frame["KeyA"].red(), 100);
+        QCOMPARE(frame["KeyB"], QColor(Qt::black));
+    }
+
+    void effectsMoveOverTimeAndSpace()
+    {
+        Effects fx(buildLayout(Form::Tkl, Region::Ansi, {"AltRight", "MetaRight", "Fn", "ControlRight"}));
+        Lighting l;
+        l.effect = "wave";
+        l.palette = "rainbow";
+        fx.setLighting(l, {});
+        const auto a = fx.render(0.0), b = fx.render(0.5);
+        QVERIFY(a["KeyA"] != b["KeyA"]);       // it moves
+        QVERIFY(a["KeyA"] != a["KeyL"]);       // and differs across the board
+        for (const char *effect : {"breathing", "spectrum", "aurora", "starlight", "rain"}) {
+            l.effect = effect;
+            fx.setLighting(l, {});
+            const auto f = fx.render(3.3);
+            QVERIFY2(std::any_of(f.begin(), f.end(), [](const QColor &c) { return c.value() > 0; }), effect);
+        }
+    }
+
+    void reactiveLightFollowsPresses()
+    {
+        Effects fx(buildLayout(Form::Tkl, Region::Ansi, {"AltRight", "MetaRight", "Fn", "ControlRight"}));
+        Lighting l;
+        l.effect = "own";
+        l.reactive = "fade";
+        fx.setLighting(l, {QColor("#ff0000")});
+        QVERIFY(l.drawn());
+        fx.press("KeyA", 10.0);
+        QVERIFY(fx.render(10.0)["KeyA"].red() > 200);
+        QCOMPARE(fx.render(10.0)["KeyS"], QColor(Qt::black));
+        QVERIFY(fx.render(11.5)["KeyA"].red() < 20);
+
+        l.reactive = "ripple";
+        fx.setLighting(l, {QColor("#ff0000")});
+        fx.press("KeyG", 20.0);
+        // The ring reaches a far key later than a near one.
+        QVERIFY(fx.render(20.1)["KeyH"].red() > fx.render(20.1)["Enter"].red());
+        QVERIFY(fx.render(20.85)["Enter"].red() > 50);
+    }
+
+    void lightingRoundTripsThroughJson()
+    {
+        Lighting l;
+        l.effect = "wave";
+        l.palette = "custom";
+        l.colors = {QColor("#112233"), QColor("#445566")};
+        l.speed = 2;
+        l.direction = "out";
+        l.reactive = "ripple";
+        l.keyColors["KeyQ"] = QColor("#abcdef");
+        QCOMPARE(Lighting::fromJson(l.toJson()), l);
+    }
+
+    void themeColoursComeFromTheTheme()
+    {
+        QTemporaryDir dir;
+        write(dir.path() + "/colors.toml", "accent = \"" "\x23" "39c5bb\"\nmagenta = \"" "\x23" "e12885\"\nblue = \"" "\x23" "5fa8e8\"\n");
+        const auto colors = themeColors(dir.path() + "/colors.toml");
+        QCOMPARE(colors.size(), 3);
+        QCOMPARE(colors[0], QColor(0x39, 0xc5, 0xbb));
+    }
+
+    void configMigratesOldColours()
+    {
+        QTemporaryDir dir;
+        write(dir.path() + "/k.json", "{\"colors\": {\"KeyE\": \"" "\x23" "00ff00\"}}");
+        const DeviceConfig c = DeviceConfig::load(dir.path() + "/k.json");
+        QCOMPARE(c.lighting.effect, QString("static"));
+        QCOMPARE(c.lighting.keyColors["KeyE"], QColor(0, 255, 0));
+        QVERIFY(c.save(dir.path() + "/k.json"));
+        QCOMPARE(DeviceConfig::load(dir.path() + "/k.json").lighting, c.lighting);
+    }
+
+    void screenPicturesBecomeBlackAndWhite()
+    {
+        QImage gray(256, 80, QImage::Format_RGB32);
+        gray.fill(QColor(128, 128, 128));
+        ScreenSettings s;
+        const QImage dithered = ScreenFrames::toMono(gray, {128, 40}, s);
+        QCOMPARE(dithered.size(), QSize(128, 40));
+        int white = 0;
+        for (int y = 0; y < 40; ++y)
+            for (int x = 0; x < 128; ++x) {
+                const int v = dithered.constScanLine(y)[x];
+                QVERIFY(v == 0 || v == 255);
+                white += v == 255;
+            }
+        QVERIFY(white > 2000 && white < 3100); // about half, as mid grey should be
+        s.dither = false;
+        s.invert = true;
+        QImage black(128, 40, QImage::Format_RGB32);
+        black.fill(Qt::black);
+        QCOMPARE(ScreenFrames::toMono(black, {128, 40}, s).constScanLine(20)[64], uchar(255));
+    }
+
+    void apexScreenUsesEightRowPages()
+    {
+        QImage img(128, 40, QImage::Format_Grayscale8);
+        img.fill(0);
+        img.setPixel(0, 0, qRgb(255, 255, 255));
+        img.setPixelColor(5, 9, Qt::white);
+        img.setPixelColor(127, 39, Qt::white);
+        const QByteArray b = ApexDriver::screenBytes(img);
+        QCOMPARE(b.size(), 640);
+        QCOMPARE(quint8(b[0]), quint8(0x01));
+        QCOMPARE(quint8(b[128 + 5]), quint8(0x02));
+        QCOMPARE(quint8(b[4 * 128 + 127]), quint8(0x80));
+    }
+
+    void keyReportsAreParsed()
+    {
+        // Boot report: left shift held, A and S down.
+        QCOMPARE(KeyInput::pressedIn(QByteArray::fromHex("0200041600000000"), false), (QSet<quint8>{0xE1, 0x04, 0x16}));
+        // The same with a report ID in front.
+        QCOMPARE(KeyInput::pressedIn(QByteArray::fromHex("010200041600000000"), true), (QSet<quint8>{0xE1, 0x04, 0x16}));
+        // NKRO bitmap: usage 0x04 is bit 4 of byte 0, 0x2C (space) bit 4 of byte 5.
+        QByteArray bitmap(32, 0);
+        bitmap[0] = char(0x10);
+        bitmap[5] = char(0x10);
+        QCOMPARE(KeyInput::pressedIn(bitmap, false), (QSet<quint8>{0x04, 0x2C}));
+        QCOMPARE(codeForUsage(0x2C), QString("Space"));
+        QCOMPARE(codeForEvdev(30), QString("KeyA"));
+        QCOMPARE(codeForEvdev(86), QString("IntlBackslash"));
     }
 
     void themeFallsBack()

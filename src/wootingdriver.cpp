@@ -440,6 +440,7 @@ bool WootingDriver::open(QString *error) {
     }
     if (!m_device.open(m_node.path, error))
         return false;
+    HidLock lock(m_device);
     QByteArray body;
     if (!ask(GetVersion, 0, &body, error) || body.size() < 3)
         return false;
@@ -464,6 +465,7 @@ bool WootingDriver::open(QString *error) {
 }
 
 bool WootingDriver::read(Settings *settings, QString *error) {
+    HidLock lock(m_device);
     // Reads name the active onboard slot: index in the low byte, namespace 0.
     QByteArray profile, actuation, rapidTrigger;
     if (!ask(GetKeyboardProfile, quint32(m_slot), &profile, error)
@@ -533,6 +535,7 @@ bool WootingDriver::writeSettings(quint8 flags, QString *error) {
 }
 
 bool WootingDriver::write(const Settings &settings, int changes, QString *error) {
+    HidLock lock(m_device);
     if (changes & (ActuationChange | RapidTriggerChange)) {
         m_pending = encode(settings, m_region, m_base);
         const Field *base = find(parse(m_pending.keyboardProfile), 1);
@@ -574,6 +577,7 @@ bool WootingDriver::write(const Settings &settings, int changes, QString *error)
 }
 
 bool WootingDriver::commit(QString *error) {
+    HidLock lock(m_device);
     if (!m_dirty)
         return true;
     // The same messages again, with the save bit and the active slot.
@@ -584,6 +588,7 @@ bool WootingDriver::commit(QString *error) {
 }
 
 bool WootingDriver::restoreLighting(QString *error) {
+    HidLock lock(m_device);
     m_directMode = false;
     return ask(LightingReset, 0, nullptr, error);
 }

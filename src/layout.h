@@ -25,5 +25,10 @@ QList<KeyGeometry> buildLayout(Form form, Region region, const QStringList &righ
 // usage; the vendor Fn key is 0xF0 there and has no standard usage.
 quint8 hidUsage(const QString &code);
 
+// The code for a HID keyboard usage, or "" (0xF0 is the vendor Fn key).
+QString codeForUsage(quint8 usage);
+// The code for a Linux input key code (evdev), or "".
+QString codeForEvdev(int keycode);
+
 // The legend printed on a US keycap for a code.
 QString keyLabel(const QString &code);

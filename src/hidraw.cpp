@@ -18,6 +18,22 @@ static QByteArray readSmall(const QString &path) {
     return file.open(QIODevice::ReadOnly) ? file.readAll() : QByteArray();
 }
 
+bool descriptorHasReportIds(const QByteArray &d) {
+    for (int i = 0; i < d.size();) {
+        const quint8 prefix = quint8(d[i]);
+        if (prefix == 0xFE) {
+            if (i + 1 >= d.size()) break;
+            i += 3 + quint8(d[i + 1]);
+            continue;
+        }
+        static const int sizes[4] = {0, 1, 2, 4};
+        if ((prefix & 0xFC) == 0x84) // global Report ID
+            return true;
+        i += 1 + sizes[prefix & 0x03];
+    }
+    return false;
+}
+
 quint16 descriptorUsagePage(const QByteArray &d) {
     // Walk short items until the first global Usage Page (tag 0x04, type 1).
     for (int i = 0; i < d.size();) {
@@ -73,7 +89,11 @@ QList<HidNode> enumerateHidraw(const QString &sysRoot, const QString &devRoot) {
             node.interface = stored.toInt();
             node.usbDevice = QString::fromUtf8(readSmall(device + "/usb_device").trimmed());
         }
-        node.usagePage = descriptorUsagePage(readSmall(device + "/report_descriptor"));
+        const QByteArray descriptor = readSmall(device + "/report_descriptor");
+        node.usagePage = descriptorUsagePage(descriptor);
+        // 05 01 09 06: Generic Desktop, Keyboard. 85: a Report ID item.
+        node.keyboard = descriptor.startsWith(QByteArray::fromHex("05010906"));
+        node.reportIds = descriptorHasReportIds(descriptor);
         if (node.vendor)
             nodes << node;
     }
@@ -93,15 +113,6 @@ bool HidDevice::open(const QString &path, QString *error) {
         if (error) *error = systemError(path);
         return false;
     }
-    // Requests and answers share one channel, so two programs talking to the
-    // same keyboard would read each other's answers. Other copies of omni
-    // respect this lock; tools that do not use it can still interfere.
-    if (::flock(m_fd, LOCK_EX | LOCK_NB) < 0) {
-        ::close(m_fd);
-        m_fd = -1;
-        if (error) *error = QStringLiteral("another copy of omni is using it");
-        return false;
-    }
     m_path = path;
     return true;
 }
@@ -110,6 +121,30 @@ void HidDevice::close() {
     if (m_fd >= 0)
         ::close(m_fd);
     m_fd = -1;
+    m_locks = 0;
+}
+
+bool HidDevice::lock(int timeoutMs) {
+    if (m_fd < 0)
+        return false;
+    if (m_locks > 0) {
+        ++m_locks;
+        return true;
+    }
+    for (int waited = 0;; waited += 2) {
+        if (::flock(m_fd, LOCK_EX | LOCK_NB) == 0) {
+            m_locks = 1;
+            return true;
+        }
+        if (waited >= timeoutMs)
+            return false;
+        ::usleep(2000);
+    }
+}
+
+void HidDevice::unlock() {
+    if (m_locks > 0 && --m_locks == 0)
+        ::flock(m_fd, LOCK_UN);
 }
 
 bool HidDevice::write(const QByteArray &data, QString *error) {

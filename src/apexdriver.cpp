@@ -106,6 +106,7 @@ bool ApexDriver::allowed(const QByteArray &f, bool feature) {
         case 0x4B: return true;                  // lighting init
         case 0x38: return sub == 0x61 || sub == 0x62 || sub == 0x65;
         case 0xB8: return sub == 0x61 || sub == 0x62 || sub == 0x65; // reads of the same tables
+        case 0x1F: return sub == 0x81;           // a picture on the screen
         default: return false;
         }
     }
@@ -113,6 +114,7 @@ bool ApexDriver::allowed(const QByteArray &f, bool feature) {
     case 0x41: return true;                // back to the keyboard's own lighting
     case 0x90: return sub == 0x00 || sub == 0x01; // firmware version, build id
     case 0xF2: case 0xF5: return true;     // layout and region reads
+    case 0x1F: return sub == 0x82;         // the screen back to the keyboard
     default: return false;
     }
 }
@@ -160,6 +162,7 @@ bool ApexDriver::open(QString *error) {
     }
     if (!m_device.open(m_node.path, error))
         return false;
+    HidLock lock(m_device);
     QByteArray answer;
     if (!output(frame({0x00, 0x90, 0x00}, kOutputSize), &answer, error))
         return false;
@@ -238,6 +241,7 @@ double ApexDriver::actuationMm(quint8 actuation, quint8 reset) {
 }
 
 bool ApexDriver::read(Settings *settings, QString *error) {
+    HidLock lock(m_device);
     QByteArray actuation, mode, sensitivity;
     if (!readTable(0x61, 0, &actuation, error) || !readTable(0x62, 0, &mode, error) || !readTable(0x65, 0, &sensitivity, error))
         return false;
@@ -261,6 +265,7 @@ bool ApexDriver::read(Settings *settings, QString *error) {
 }
 
 bool ApexDriver::write(const Settings &settings, int changes, QString *error) {
+    HidLock lock(m_device);
     QHash<quint8, KeySettings> byUsage;
     for (auto it = settings.begin(); it != settings.end(); ++it)
         if (const quint8 usage = hidUsage(it.key()))
@@ -322,6 +327,32 @@ bool ApexDriver::write(const Settings &settings, int changes, QString *error) {
 }
 
 bool ApexDriver::restoreLighting(QString *error) {
+    HidLock lock(m_device);
     m_directMode = false;
     return output(frame({0x00, 0x41}, kOutputSize), nullptr, error);
+}
+
+QByteArray ApexDriver::screenBytes(const QImage &image) {
+    const QImage img = image.convertToFormat(QImage::Format_Grayscale8);
+    QByteArray bytes(640, 0);
+    for (int y = 0; y < 40 && y < img.height(); ++y) {
+        const uchar *row = img.constScanLine(y);
+        for (int x = 0; x < 128 && x < img.width(); ++x)
+            if (row[x] > 127)
+                bytes[(y / 8) * 128 + x] = char(quint8(bytes[(y / 8) * 128 + x]) | (1 << (y % 8)));
+    }
+    return bytes;
+}
+
+bool ApexDriver::showScreen(const QImage &image, QString *error) {
+    HidLock lock(m_device);
+    QByteArray f = frame({0x00, 0x1F, 0x81}, kFeatureSize);
+    const QByteArray bytes = screenBytes(image);
+    std::copy(bytes.begin(), bytes.end(), f.begin() + 3);
+    return feature(f, error);
+}
+
+bool ApexDriver::releaseScreen(QString *error) {
+    HidLock lock(m_device);
+    return output(frame({0x00, 0x1F, 0x82}, kOutputSize), nullptr, error);
 }

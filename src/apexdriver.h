@@ -24,6 +24,13 @@ public:
     bool read(Settings *settings, QString *error) override;
     bool write(const Settings &settings, int changes, QString *error) override;
     bool restoreLighting(QString *error) override;
+    QSize screenSize() const override { return {128, 40}; }
+    bool showScreen(const QImage &image, QString *error) override;
+    bool releaseScreen(QString *error) override;
+
+    // 128 x 40 pixels to the screen's 640 bytes: eight-row pages, each byte one
+    // column of a page with its lowest bit on top (found on the keyboard itself).
+    static QByteArray screenBytes(const QImage &image);
 
     // Millimetres to the board's raw hall-sensor pair (actuation, reset) and back.
     static QPair<quint8, quint8> actuationRaw(double mm);
