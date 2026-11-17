@@ -9,8 +9,8 @@ or **[60HE+ only]**.
 
 | Tag | Source | What it is | Trust |
 |---|---|---|---|
-| **W** | Wootility 5.4.2 web bundle `https://wootility.io/assets/index-BaoALhfv.js` (sha256 `987ba72a09a78b1f…`, version constant `ak="5.4.2"`), downloaded to `/home/loki/Work/omni-research/wootility-web/`. | Wooting's own configurator: the code that actually drives the keyboard. It is obfuscated. I decoded its string table statically with my own scripts (`omni-research/tools/deob.py`, `tools/fold.py`, both read-only and never executing the bundle). The output is `wootility-web/index.deob2.js`. Citations name the class or function symbol (for example "W `class tY.getKeyboardProfile`"). `grep` the deob file for the quoted string to find it. | **Highest.** This is the reference implementation, and the protobuf schemas are the real ones with field names. |
-| **S** | `WootingKb/wooting-rgb-sdk` @ `7e091a0` (2026-10-26), cloned to `omni-research/wooting-rgb-sdk` | Wooting's official open-source RGB SDK (C) | High for the RGB/WootDev subset |
+| **W** | Wootility 5.4.2, the web build at wootility.io | Wooting's own configurator, studied for interoperability: which messages it sends and how they are laid out. No Wootility code is copied into omni or this document. Citations name the (minified) class or method a fact was read from, for example "W `class tY.getKeyboardProfile`". | **Highest.** This is the reference implementation, and the protobuf schemas are the real ones with field names. |
+| **S** | [`WootingKb/wooting-rgb-sdk`](https://github.com/WootingKb/wooting-rgb-sdk) @ `7e091a0` (2026-10-26) | Wooting's official open-source RGB SDK (C) | High for the RGB/WootDev subset |
 | **PR75** | https://github.com/WootingKb/wooting-rgb-sdk/pull/75 (merged as `451f40d`) | A bug report and fix tested **on a physical 60HE V2** (fw 2.14.1, ISO, `31e3:1342`, usage page `0xff55`, Arch Linux, hidapi-hidraw) | High. It is the only 60HE V2 hardware evidence I found. |
 | **A** | `WootingKb/wooting-analog-sdk` @ `be35a62` | Official analog SDK (Rust) | High for the analog interface |
 | **E** | `eng1n88r/wooting` @ `7d4c6ad` (Rust daemon/CLI/GTK app, Linux), `docs/protocol.md` + `docs/captures/README.md` | Community reverse engineering with Wootility v5.4 WebHID captures on a **60HE+** (fw 2.14.1/2.14.2, `31e3:1322`) | Medium-high. Captures agree with W, but some names and interpretations are wrong (corrected below). |
@@ -569,11 +569,5 @@ Open items, to check on the real board with a read-only probe first:
 6. ARM "static" RGB core contents (§3.2). Preserve the effect list rather than synthesizing one.
 7. Interface number and hidraw ordering on the v2. Match on the usage page.
 
-**Recommended path:** treat W as the specification. Model omni's encoder on W's `tY` class (method by method, as tabulated above) and its `SY`/`ZY` controllers (`setKeyboardProfile`, `setRapidTriggerProfile`, `GZ`). Use E (`crates/wooting-proto`, Rust, Linux hidraw, MIT/compatible licence to be checked before copying) and O as independent cross-checks and as sources of known-good byte strings for unit tests. Generate omni's protobuf messages from the schemas in §3-§7 with the exact field numbers. The Wootility field names can be recovered for any other message with `python3 -I omni-research/tools/schemas.py omni-research/wootility-web/index.deob2.js profiles.<Name>`.
+**Recommended path:** treat W as the specification. Model omni's encoder on W's `tY` class (method by method, as tabulated above) and its `SY`/`ZY` controllers (`setKeyboardProfile`, `setRapidTriggerProfile`, `GZ`). Use E (`crates/wooting-proto`, Rust, Linux hidraw, MIT/compatible licence to be checked before copying) and O as independent cross-checks and as sources of known-good byte strings for unit tests. Generate omni's protobuf messages from the schemas in §3-§7 with the exact field numbers. 
 
-Reproduce the decoding (no code from the bundle is executed):
-```
-python3 -I omni-research/tools/deob.py  wootility-web/index-BaoALhfv.js wootility-web/index.deob.js
-python3 -I omni-research/tools/fold.py  wootility-web/index.deob.js     wootility-web/index.deob2.js
-python3 -I omni-research/tools/defn.py  wootility-web/index.deob2.js 1500 <symbol>   # print a definition
-```

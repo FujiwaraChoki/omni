@@ -1,11 +1,11 @@
 # SteelSeries Apex Pro TKL Gen 3 (wired, USB 1038:1642): HID protocol spec
 
-Compiled 2026-11-17 by reading source only. No hidraw device was opened and no binary was run.
+Compiled 2026-11-17 from the open-source projects below; the last section adds what omni measured on the keyboard itself.
 
 ## Evidence legend and path abbreviations
 
-`ORGB/` = `.../scratchpad/src/openrgb/Controllers/SteelSeriesController/`
-`SSGG/` = `.../scratchpad/src/ssgg/` (code under `src/`, notes under `docs/development/` and `.claude/rules/`)
+`ORGB/` = [OpenRGB](https://gitlab.com/CalcProgrammer1/OpenRGB) @ `5bcfa9a`, `Controllers/SteelSeriesController/` (GPL-2.0)
+`SSGG/` = [steelseriesgg-rs](https://github.com/Ven0m0/steelseriesgg-rs) @ `38e98d5` (code under `src/`, notes under `docs/development/` and `.claude/rules/`)
 
 Every claim carries one of these tags:
 
