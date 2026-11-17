@@ -89,6 +89,7 @@ private:
     void edit(int changes, const std::function<void(KeySettings &)> &edit);
     void queueWrite(int changes);
     void writePending();
+    void commitAll();
     void setError(const QString &error);
     void loadColors(Device &d);
     void saveColors(const Device &d);
@@ -102,6 +103,7 @@ private:
     QFileSystemWatcher m_watcher;
     QTimer m_rescanTimer;
     QTimer m_writeTimer;
+    QTimer m_commitTimer;
     QElapsedTimer m_lastEdit;
     int m_lastChanges = 0;
 };

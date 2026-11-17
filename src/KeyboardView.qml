@@ -15,7 +15,10 @@ Item {
     readonly property real radius: Math.min(Math.max(2, unit * 0.12), theme.radius > 0 ? unit * 0.2 : 2)
 
     function selected(code) { return selection.indexOf(code) >= 0 }
-    function format(mm) { return Number(mm).toLocaleString(Qt.locale(), 'f', 1) }
+    function format(mm) {
+        const decimals = Math.abs(mm * 10 - Math.round(mm * 10)) > 0.001 ? 2 : 1
+        return Number(mm).toLocaleString(Qt.locale(), 'f', decimals)
+    }
 
     Item {
         id: board

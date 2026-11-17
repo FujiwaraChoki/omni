@@ -20,6 +20,10 @@ Backend::Backend(QObject *parent, std::function<QList<HidNode>()> scan, const QS
     m_writeTimer.setSingleShot(true);
     m_writeTimer.setInterval(120);
     connect(&m_writeTimer, &QTimer::timeout, this, &Backend::writePending);
+    // Saving to the keyboard's flash waits until edits settle.
+    m_commitTimer.setSingleShot(true);
+    m_commitTimer.setInterval(1500);
+    connect(&m_commitTimer, &QTimer::timeout, this, &Backend::commitAll);
     if (watchDevices) {
         // hidraw nodes appear and vanish in /dev as keyboards come and go.
         m_watcher.addPath("/dev");
@@ -399,6 +403,15 @@ void Backend::writePending() {
         setError({});
         if (changes & ColorChange)
             saveColors(*d);
+        m_commitTimer.start();
+    }
+}
+
+void Backend::commitAll() {
+    for (auto &d : m_devices) {
+        QString error;
+        if (!d->keyboard->commit(&error))
+            setError(tr("Could not save to the %1: %2").arg(d->keyboard->model(), error));
     }
 }
 
@@ -406,6 +419,10 @@ void Backend::flush() {
     if (m_writeTimer.isActive()) {
         m_writeTimer.stop();
         writePending();
+    }
+    if (m_commitTimer.isActive()) {
+        m_commitTimer.stop();
+        commitAll();
     }
 }
 

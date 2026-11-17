@@ -11,6 +11,7 @@
 #include "layout.h"
 #include "theme.h"
 #include "translator.h"
+#include "wootingdriver.h"
 
 // A keyboard that only remembers what it was sent.
 class FakeKeyboard : public Keyboard {
@@ -179,6 +180,83 @@ private slots:
         QCOMPARE(fake->lastChanges, int(ColorChange));
     }
 
+    void wootingEncodesAnalogValues()
+    {
+        QCOMPARE(WootingDriver::analogValue(1.0), quint32(0x5000));
+        QCOMPARE(WootingDriver::analogValue(2.0), quint32(0x6000));
+        QCOMPARE(WootingDriver::analogValue(4.0), quint32(0x7FFF));
+        QCOMPARE(WootingDriver::analogValue(0.1), quint32(0x419A));
+        QCOMPARE(WootingDriver::analogValue(1.6), quint32(0x5999));
+        for (int twentieths = 2; twentieths <= 80; ++twentieths)
+            QCOMPARE(WootingDriver::analogMm(WootingDriver::analogValue(twentieths / 20.0)), twentieths / 20.0);
+        QCOMPARE(WootingDriver::rgb565(QColor(255, 0, 0)), quint16(0xF800));
+        QCOMPARE(WootingDriver::rgb565(QColor(0, 255, 0)), quint16(0x07E0));
+    }
+
+    void wootingFramesCommandsAndReports()
+    {
+        QCOMPARE(WootingDriver::command(1, 0), QByteArray::fromHex("01d1da0100000000"));
+        QCOMPARE(WootingDriver::command(23, 2), QByteArray::fromHex("01d1da1702000000"));
+        const QByteArray small = WootingDriver::outputReport(0x15, QByteArray(29, 0));
+        QCOMPARE(small.size(), 33);
+        QCOMPARE(small[0], char(1));
+        const QByteArray bigger = WootingDriver::outputReport(0x15, QByteArray(30, 0));
+        QCOMPARE(bigger.size(), 63);
+        QCOMPARE(bigger[0], char(2));
+        QCOMPARE(WootingDriver::matrixId("KeyA", Region::Ansi), 0x61);
+        QCOMPARE(WootingDriver::matrixId("Fn", Region::Ansi), 0xAD);
+        QCOMPARE(WootingDriver::matrixId("Space", Region::Iso), 0xA6);
+        QCOMPARE(WootingDriver::matrixId("IntlBackslash", Region::Ansi), -1);
+        QCOMPARE(WootingDriver::matrixId("Backslash", Region::Iso), -1);
+    }
+
+    void wootingRefusesDangerousCommands()
+    {
+        for (int cmd : {2, 21, 25, 43, 44, 63, 64, 79, 80, 81})
+            QVERIFY2(!WootingDriver::allowedCommand(quint8(cmd)), qPrintable(QString::number(cmd)));
+        for (int type : {0x07, 0x0C, 0x14, 0x18, 0x1C, 0x26, 0x27, 0x28, 0x2B})
+            QVERIFY2(!WootingDriver::allowedOutput(quint8(type)), qPrintable(QString::number(type, 16)));
+        QVERIFY(WootingDriver::allowedCommand(1));
+        QVERIFY(WootingDriver::allowedOutput(0x1D));
+    }
+
+    void wootingMatchesCapturedPerKeyActuation()
+    {
+        // Key A at 2.5 mm, everything else at the profile value, sent live.
+        // Captured from Wootility on a 60HE+ (see docs/protocol-wooting-60he-v2.md 4.3).
+        Settings settings = sixtyKeys(1.5);
+        settings["KeyA"].actuation = 2.5;
+        const auto m = WootingDriver::encode(settings, Region::Ansi, {});
+        QCOMPARE(m.actuationProfile, QByteArray::fromHex("2206" "08e180fcbf06"));
+        const QByteArray report = WootingDriver::outputReport(0x15, WootingDriver::profileBody(0, m.actuationProfile));
+        QCOMPARE(report.left(15), QByteArray::fromHex("01d1da15000800" "220608e180fcbf06"));
+    }
+
+    void wootingKeepsUneditedProfileFields()
+    {
+        // 1.5 mm, Rapid Trigger on at 0.3 mm, tick rate 2, normal range, as in the spec's worked example.
+        Settings settings = sixtyKeys(1.5);
+        for (auto &k : settings) { k.rapidTrigger = true; k.press = k.release = 0.3; }
+        const QByteArray previous = QByteArray::fromHex("0880c00110011800280030023801" "4800");
+        const auto m = WootingDriver::encode(settings, Region::Ansi, previous);
+        QCOMPARE(m.keyboardProfile, QByteArray::fromHex("0a14" "0880b001" "1001" "1801" "20cd8901" "2800" "3002" "3801" "4800"));
+        QVERIFY(m.actuationProfile.isEmpty());
+        QVERIFY(m.rapidTriggerProfile.isEmpty());
+    }
+
+    void wootingGroupsRapidTriggerExceptions()
+    {
+        // W A S D at 0.15 / 0.30, Esc off, every other key on at 0.4: the spec's example groups.
+        Settings settings = sixtyKeys(2.0);
+        for (auto &k : settings) { k.rapidTrigger = true; k.press = k.release = 0.4; }
+        for (const char *code : {"KeyW", "KeyA", "KeyS", "KeyD"}) { settings[code].press = 0.15; settings[code].release = 0.30; }
+        settings["Escape"].rapidTrigger = false;
+        const auto m = WootingDriver::encode(settings, Region::Ansi, {});
+        QVERIFY(m.rapidTriggerProfile.contains(QByteArray::fromHex("0a12" "0842086108620863" "1208" "08e68401" "10cd8901")));
+        QVERIFY(m.rapidTriggerProfile.contains(QByteArray::fromHex("0a04" "0820" "1800")));
+        QCOMPARE(m.rapidTriggerProfile.size(), 20 + 6);
+    }
+
     void themeFallsBack()
     {
         QTemporaryDir dir;
@@ -257,6 +335,17 @@ private slots:
     }
 
 private:
+    static Settings sixtyKeys(double actuation)
+    {
+        Settings s;
+        for (const auto &k : buildLayout(Form::Sixty, Region::Ansi, {"AltRight", "ContextMenu", "ControlRight", "Fn"})) {
+            KeySettings ks;
+            ks.actuation = actuation;
+            s.insert(k.code, ks);
+        }
+        return s;
+    }
+
     static void write(const QString &path, const QByteArray &contents)
     {
         QFile file(path);

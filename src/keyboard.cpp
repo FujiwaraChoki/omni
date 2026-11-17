@@ -1,6 +1,7 @@
 #include "keyboard.h"
 
 #include "apexdriver.h"
+#include "wootingdriver.h"
 
 #include <cmath>
 
@@ -14,6 +15,8 @@ const QList<Driver> &drivers() {
     static const QList<Driver> list{
         {QStringLiteral("SteelSeries Apex Pro TKL Gen 3"), &ApexDriver::matches,
          [](const QList<HidNode> &nodes) -> Keyboard * { return new ApexDriver(nodes); }},
+        {QStringLiteral("Wooting 60HE v2"), &WootingDriver::matches,
+         [](const QList<HidNode> &nodes) -> Keyboard * { return new WootingDriver(nodes); }},
     };
     return list;
 }

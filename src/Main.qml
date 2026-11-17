@@ -26,8 +26,10 @@ ApplicationWindow {
     function mm(value) {
         // Re-evaluated on a language switch so separators follow it.
         translator.language
-        return qsTr("%1 mm").arg(Number(value).toLocaleString(Qt.locale(), 'f', 1))
+        return qsTr("%1 mm").arg(Number(value).toLocaleString(Qt.locale(), 'f', decimals(value)))
     }
+    // One decimal unless the value sits between tenths (Wooting's 0.05 mm steps).
+    function decimals(value) { return Math.abs(value * 10 - Math.round(value * 10)) > 0.001 ? 2 : 1 }
     function nudgeActuation(direction) {
         if (analogSelected)
             backend.setActuation((sel.actuation ?? caps.actuationMin) + direction * caps.actuationStep)

@@ -58,6 +58,10 @@ public:
     virtual bool read(Settings *settings, QString *error) = 0;
     // Sends the parts named in `changes` for every key.
     virtual bool write(const Settings &settings, int changes, QString *error) = 0;
+    // Makes what write() sent survive a replug, for keyboards where that is a
+    // separate step. The backend calls it once edits have settled, so a slider
+    // drag does not wear the keyboard's flash.
+    virtual bool commit(QString *error) { Q_UNUSED(error); return true; }
     // Hands lighting back to the keyboard's own effects.
     virtual bool restoreLighting(QString *error) = 0;
 };

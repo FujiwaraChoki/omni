@@ -11,7 +11,8 @@ HEADERS += \
     src/keyboard.h \
     src/layout.h \
     src/theme.h \
-    src/translator.h
+    src/translator.h \
+    src/wootingdriver.h
 
 SOURCES += \
     src/main.cpp \
@@ -21,6 +22,7 @@ SOURCES += \
     src/keyboard.cpp \
     src/layout.cpp \
     src/theme.cpp \
-    src/translator.cpp
+    src/translator.cpp \
+    src/wootingdriver.cpp
 
 RESOURCES += src/resources.qrc
