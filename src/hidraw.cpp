@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <linux/hidraw.h>
 #include <poll.h>
+#include <sys/file.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
 
@@ -90,6 +91,15 @@ bool HidDevice::open(const QString &path, QString *error) {
     m_fd = ::open(QFile::encodeName(path).constData(), O_RDWR | O_CLOEXEC);
     if (m_fd < 0) {
         if (error) *error = systemError(path);
+        return false;
+    }
+    // Requests and answers share one channel, so two programs talking to the
+    // same keyboard would read each other's answers. Other copies of omni
+    // respect this lock; tools that do not use it can still interfere.
+    if (::flock(m_fd, LOCK_EX | LOCK_NB) < 0) {
+        ::close(m_fd);
+        m_fd = -1;
+        if (error) *error = QStringLiteral("another copy of omni is using it");
         return false;
     }
     m_path = path;
