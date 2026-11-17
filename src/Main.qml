@@ -6,9 +6,9 @@ import QtQuick.Layouts
 ApplicationWindow {
     id: win
     width: 1180
-    height: 700
+    height: 760
     minimumWidth: 760
-    minimumHeight: 480
+    minimumHeight: 520
     visible: true
     title: "Omni"
     color: "#0e0e10"
@@ -22,6 +22,7 @@ ApplicationWindow {
     readonly property bool hasDevice: backend.devices.length > 0
     readonly property bool analogSelected: sel.analogCount > 0
     property bool helpVisible: false
+    property int tab: 0 // 0 keys, 1 lighting, 2 screen
 
     function mm(value) {
         // Re-evaluated on a language switch so separators follow it.
@@ -55,9 +56,15 @@ ApplicationWindow {
     Shortcut { sequence: "Space"; context: Qt.ApplicationShortcut; onActivated: if (win.analogSelected) backend.setRapidTrigger(!(sel.rapidTrigger && !sel.rapidTriggerMixed)) }
     Shortcut { sequence: "["; context: Qt.ApplicationShortcut; onActivated: win.nudgeSensitivity(-1) }
     Shortcut { sequence: "]"; context: Qt.ApplicationShortcut; onActivated: win.nudgeSensitivity(1) }
+    Shortcut { sequence: "1"; context: Qt.ApplicationShortcut; onActivated: win.tab = 0 }
+    Shortcut { sequence: "2"; context: Qt.ApplicationShortcut; onActivated: win.tab = 1 }
+    Shortcut { sequence: "3"; context: Qt.ApplicationShortcut; onActivated: if (win.caps.hasScreen) win.tab = 2 }
     Shortcut { sequence: "Tab"; context: Qt.ApplicationShortcut; onActivated: if (backend.devices.length > 1) backend.current = (backend.current + 1) % backend.devices.length }
     Shortcut { sequences: [StandardKey.Undo]; context: Qt.ApplicationShortcut; onActivated: backend.undo() }
     Shortcut { sequences: [StandardKey.Redo, "Ctrl+Shift+Z"]; context: Qt.ApplicationShortcut; onActivated: backend.redo() }
+
+    // A keyboard without a screen has no Screen tab.
+    onCapsChanged: if (tab === 2 && !caps.hasScreen) tab = 0
 
     // Right-to-left languages mirror the window; the Translator sets the
     // application's layout direction.
@@ -69,7 +76,7 @@ ApplicationWindow {
         ColumnLayout {
             anchors.fill: parent
             anchors.margins: 32
-            spacing: 20
+            spacing: 18
             visible: win.hasDevice
 
             // Keyboards, as plain tabs.
@@ -82,10 +89,10 @@ ApplicationWindow {
                         required property var modelData
                         required property int index
                         readonly property bool active: index === backend.current
-                        implicitWidth: tab.implicitWidth
-                        implicitHeight: tab.implicitHeight + 8
+                        implicitWidth: deviceLabel.implicitWidth
+                        implicitHeight: deviceLabel.implicitHeight + 8
                         Label {
-                            id: tab
+                            id: deviceLabel
                             text: modelData.model
                             font.pixelSize: 15
                             font.weight: active ? Font.DemiBold : Font.Normal
@@ -93,7 +100,7 @@ ApplicationWindow {
                         }
                         Rectangle {
                             visible: active
-                            width: tab.width; height: 2
+                            width: deviceLabel.width; height: 2
                             anchors.bottom: parent.bottom
                             color: theme.accent
                         }
@@ -122,6 +129,7 @@ ApplicationWindow {
             KeyboardView {
                 keys: backend.keys
                 selection: backend.selection
+                ledColors: backend.ledColors
                 Layout.fillWidth: true
                 Layout.fillHeight: true
             }
@@ -163,123 +171,55 @@ ApplicationWindow {
                 radius: theme.radius
                 border.color: "#202024"
                 Layout.fillWidth: true
-                implicitHeight: controls.implicitHeight + 40
+                implicitHeight: panelColumn.implicitHeight + 36
 
                 ColumnLayout {
-                    id: controls
+                    id: panelColumn
                     anchors.fill: parent
-                    anchors.margins: 20
-                    spacing: 6
+                    anchors.margins: 18
+                    spacing: 14
 
-                    SettingRow {
-                        label: qsTr("Actuation")
-                        enabled: win.analogSelected
-                        value: !win.analogSelected ? "–" : sel.actuationMixed ? qsTr("Mixed") : win.mm(sel.actuation)
-                        Slider {
-                            from: caps.actuationMin ?? 0.1
-                            to: caps.actuationMax ?? 4.0
-                            stepSize: caps.actuationStep ?? 0.1
-                                                        value: sel.actuation ?? from
-                            Layout.fillWidth: true
-                            onMoved: backend.setActuation(value)
-                        }
-                    }
-
-                    SettingRow {
-                        label: qsTr("Rapid Trigger")
-                        enabled: win.analogSelected
-                        value: !win.analogSelected || !sel.rapidTrigger ? "–" : sel.pressMixed ? qsTr("Mixed") : win.mm(sel.press)
-                        Switch {
-                            checked: sel.rapidTrigger === true && !sel.rapidTriggerMixed
-                            onToggled: backend.setRapidTrigger(checked)
-                        }
-                        Slider {
-                            enabled: sel.rapidTrigger === true
-                            from: caps.sensitivityMin ?? 0.1
-                            to: caps.sensitivityMax ?? 1.0
-                            stepSize: caps.sensitivityStep ?? 0.1
-                                                        value: sel.press ?? from
-                            Layout.fillWidth: true
-                            onMoved: backend.setPress(value)
-                        }
-                    }
-
-                    SettingRow {
-                        visible: caps.separateRelease === true
-                        label: qsTr("Release")
-                        enabled: win.analogSelected && sel.rapidTrigger === true
-                        value: !enabled ? "–" : sel.releaseMixed ? qsTr("Mixed") : win.mm(sel.release)
-                        Slider {
-                            from: caps.sensitivityMin ?? 0.1
-                            to: caps.sensitivityMax ?? 1.0
-                            stepSize: caps.sensitivityStep ?? 0.1
-                                                        value: sel.release ?? from
-                            Layout.fillWidth: true
-                            onMoved: backend.setRelease(value)
-                        }
-                    }
-
-                    SettingRow {
-                        visible: caps.perKeyColor === true
-                        label: qsTr("Colour")
-                        enabled: sel.count > 0
-                        value: sel.count === 0 ? "–" : sel.colorMixed ? qsTr("Mixed") : sel.color === "" ? qsTr("Own") : sel.color.toUpperCase()
+                    // What the panel edits.
+                    RowLayout {
+                        spacing: 22
                         Repeater {
-                            model: ["", "#ffffff", "#ff3b30", "#ff9f0a", "#ffd60a", "#30d158", "#64d2ff", "#0a84ff", "#bf5af2", "#ff375f"]
-                            delegate: Rectangle {
-                                required property string modelData
-                                readonly property bool current: !sel.colorMixed && sel.color === modelData && sel.count > 0
-                                width: 22; height: 22; radius: 11
-                                color: modelData === "" ? "transparent" : modelData
-                                border.width: current ? 2 : 1
-                                border.color: current ? "white" : (modelData === "" ? "#6e6e76" : Qt.darker(modelData, 1.4))
-                                opacity: parent.enabled ? 1 : 0.35
-                                // "Own lighting" is an empty ring with a slash through it.
+                            model: [
+                                { label: qsTr("Keys"), shown: true },
+                                { label: qsTr("Lighting"), shown: true },
+                                { label: qsTr("Screen"), shown: win.caps.hasScreen === true },
+                            ]
+                            delegate: Item {
+                                required property var modelData
+                                required property int index
+                                visible: modelData.shown
+                                implicitWidth: tabLabel.implicitWidth
+                                implicitHeight: tabLabel.implicitHeight + 6
+                                Label {
+                                    id: tabLabel
+                                    text: modelData.label
+                                    font.pixelSize: 13
+                                    font.weight: win.tab === index ? Font.DemiBold : Font.Normal
+                                    color: win.tab === index ? "white" : "#6e6e76"
+                                }
                                 Rectangle {
-                                    visible: modelData === ""
-                                    anchors.centerIn: parent
-                                    width: 16; height: 1.5; rotation: -45
-                                    color: "#6e6e76"
+                                    visible: win.tab === index
+                                    width: tabLabel.width; height: 2
+                                    anchors.bottom: parent.bottom
+                                    color: theme.accent
                                 }
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: backend.setColor(parent.modelData)
-                                }
-                                ToolTip.visible: hover.hovered && modelData === ""
-                                ToolTip.text: qsTr("The keyboard's own lighting")
-                                HoverHandler { id: hover }
+                                MouseArea { anchors.fill: parent; cursorShape: Qt.PointingHandCursor; onClicked: win.tab = index }
                             }
                         }
-                        Item { Layout.fillWidth: true }
-                        // Any other colour, typed as hex.
-                        Rectangle {
-                            Layout.preferredWidth: 96
-                            implicitHeight: 28
-                            radius: Math.min(4, theme.radius)
-                            color: "#0e0e10"
-                            border.color: hex.activeFocus ? theme.accent : "#2a2a30"
-                            opacity: parent.enabled ? 1 : 0.35
-                            TextInput {
-                                id: hex
-                                anchors.fill: parent
-                                anchors.leftMargin: 10
-                                verticalAlignment: TextInput.AlignVCenter
-                                color: "white"
-                                font.pixelSize: 13
-                                selectByMouse: true
-                                validator: RegularExpressionValidator { regularExpression: /#?[0-9a-fA-F]{0,6}/ }
-                                onAccepted: { backend.setColor(text.startsWith("#") ? text : "#" + text); text = ""; focus = false }
-                                Keys.onEscapePressed: { text = ""; focus = false }
-                                Text {
-                                    visible: !hex.text && !hex.activeFocus
-                                    text: "#RRGGBB"
-                                    color: "#55555c"
-                                    font: hex.font
-                                    anchors.verticalCenter: parent.verticalCenter
-                                }
-                            }
-                        }
+                    }
+
+                    StackLayout {
+                        id: stack
+                        currentIndex: win.tab
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: [keysPanel, lightingPanel, screenPanel][win.tab].implicitHeight
+                        KeysPanel { id: keysPanel }
+                        LightingPanel { id: lightingPanel }
+                        ScreenPanel { id: screenPanel }
                     }
                 }
             }

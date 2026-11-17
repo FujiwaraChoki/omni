@@ -16,6 +16,7 @@ Rectangle {
         ["↑ / ↓", qsTr("Actuation deeper or shallower")],
         [qsTr("Space"), qsTr("Rapid Trigger on or off")],
         ["[ / ]", qsTr("Rapid Trigger sensitivity")],
+        ["1 / 2 / 3", qsTr("Keys, Lighting, Screen")],
         ["Tab", qsTr("Next keyboard")],
         ["Ctrl+Z", qsTr("Undo")],
         ["Ctrl+Shift+Z", qsTr("Redo")],

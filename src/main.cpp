@@ -4,6 +4,7 @@
 #include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
+#include <QQuickImageProvider>
 #include <QQuickStyle>
 #include <QLockFile>
 #include <QSocketNotifier>
@@ -19,6 +20,22 @@
 #include "translator.h"
 
 namespace {
+// The screen preview's current frame, as image://omni/screen/<frame>.
+class ScreenImages : public QQuickImageProvider {
+public:
+    explicit ScreenImages(Backend *backend) : QQuickImageProvider(QQuickImageProvider::Image), m_backend(backend) {}
+    QImage requestImage(const QString &, QSize *size, const QSize &) override {
+        QImage image = m_backend->screenPreview();
+        if (image.isNull())
+            image = QImage(1, 1, QImage::Format_Grayscale8), image.fill(0);
+        if (size)
+            *size = image.size();
+        return image;
+    }
+private:
+    Backend *m_backend;
+};
+
 int signalPipe[2] = {-1, -1};
 void onSignal(int) { const char c = 1; [[maybe_unused]] auto n = ::write(signalPipe[1], &c, 1); }
 
@@ -70,12 +87,14 @@ int main(int argc, char *argv[]) {
     Theme theme;
     Backend backend;
     QObject::connect(&app, &QGuiApplication::aboutToQuit, &backend, &Backend::flush);
+    QObject::connect(&theme, &Theme::changed, &backend, &Backend::reloadTheme);
 
     QQmlApplicationEngine engine;
     QObject::connect(&translator, &Translator::changed, &engine, &QQmlEngine::retranslate);
     engine.rootContext()->setContextProperty("translator", &translator);
     engine.rootContext()->setContextProperty("theme", &theme);
     engine.rootContext()->setContextProperty("backend", &backend);
+    engine.addImageProvider("omni", new ScreenImages(&backend));
     engine.load(QUrl("qrc:/Main.qml"));
     if (engine.rootObjects().isEmpty())
         return 1;

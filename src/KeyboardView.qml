@@ -8,6 +8,7 @@ Item {
 
     property var keys: []
     property var selection: []
+    property var ledColors: ({}) // code -> colour of the light under the key, when omni draws it
     readonly property real unitsWide: keys.reduce((m, k) => Math.max(m, k.x + k.w), 1)
     readonly property real unitsHigh: keys.reduce((m, k) => Math.max(m, k.y + k.h), 1)
     readonly property real unit: Math.min(width / unitsWide, height / unitsHigh)
@@ -37,21 +38,26 @@ Item {
                 width: modelData.w * view.unit - view.gap
                 height: modelData.h * view.unit - view.gap
                 radius: view.radius
-                color: isSelected ? Qt.alpha(theme.accent, 0.16) : (hovered ? "#1d1d21" : "#17171a")
+                readonly property color led: view.ledColors[modelData.code] ?? "transparent"
+                readonly property bool lit: view.ledColors[modelData.code] !== undefined
+                // A lit key glows through the cap like the real one; selection stays readable on top.
+                color: isSelected ? Qt.alpha(theme.accent, 0.16)
+                     : lit ? Qt.tint(hovered ? "#1d1d21" : "#141416", Qt.alpha(led, 0.34))
+                     : (hovered ? "#1d1d21" : "#17171a")
                 border.width: isSelected ? 2 : 1
                 border.color: isSelected ? theme.accent : "#26262b"
-                opacity: modelData.analog || modelData.color !== "" || isSelected ? 1 : 0.72
+                opacity: modelData.analog || lit || isSelected ? 1 : 0.72
 
                 readonly property bool hovered: pointer.containsMouse && !pointer.dragging
                     && pointer.hoverX >= x && pointer.hoverX < x + width && pointer.hoverY >= y && pointer.hoverY < y + height
 
-                // The key's own colour, as a strip along the bottom.
+                // The light itself, as a bright line along the bottom edge.
                 Rectangle {
-                    visible: cap.modelData.color !== ""
-                    color: cap.modelData.color || "transparent"
-                    height: Math.max(2, view.unit * 0.07)
+                    visible: cap.lit
+                    color: cap.led
+                    height: Math.max(2, view.unit * 0.06)
                     radius: height / 2
-                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: view.unit * 0.12 }
+                    anchors { left: parent.left; right: parent.right; bottom: parent.bottom; margins: view.unit * 0.1 }
                 }
 
                 Text {

@@ -154,10 +154,16 @@ private slots:
         backend.setSelection({"KeyW", "KeyS"}, false);
         QVERIFY(backend.selected().value("actuationMixed").toBool());
 
+        // Colours are lighting now: saved for the lighting service, never sent by the window.
+        backend.flush();
+        const int writes = fake->writes;
         backend.setColor("#ff0000");
         backend.flush();
-        QCOMPARE(fake->stored["KeyW"].color, QColor("#ff0000"));
-        QVERIFY(QFile::exists(dir.path() + "/fake_1.json"));
+        QCOMPARE(fake->writes, writes);
+        QCOMPARE(backend.lighting().value("effect").toString(), QString("static"));
+        const DeviceConfig saved = DeviceConfig::load(dir.path() + "/fake_1.json");
+        QCOMPARE(saved.lighting.keyColors.value("KeyW"), QColor("#ff0000"));
+        QCOMPARE(saved.lighting.keyColors.value("Fn"), QColor()); // Fn was not selected any more
     }
 
     void backendUndoesOneDragAsOneStep()
@@ -183,7 +189,7 @@ private slots:
         QCOMPARE(fake->stored["KeyQ"].actuation, 1.6);
     }
 
-    void backendRestoresSavedColours()
+    void backendReadsSavedLighting()
     {
         QTemporaryDir dir;
         // A plain string: moc misreads '#' inside raw string literals.
@@ -191,8 +197,26 @@ private slots:
         Backend backend(nullptr, [] { return QList<HidNode>{}; }, dir.path(), false);
         auto *fake = new FakeKeyboard;
         backend.adopt(fake, "test");
-        QCOMPARE(fake->stored["KeyE"].color, QColor("#00ff00"));
-        QCOMPARE(fake->lastChanges, int(ColorChange));
+        QCOMPARE(backend.lighting().value("effect").toString(), QString("static"));
+        QCOMPARE(fake->writes, 0);
+
+        // Lighting edits undo like key edits.
+        backend.setEffect("wave");
+        backend.setSpeed(2.0);
+        QCOMPARE(backend.lighting().value("speed").toDouble(), 2.0);
+        backend.undo();
+        QCOMPARE(backend.lighting().value("speed").toDouble(), 1.0);
+        backend.undo();
+        QCOMPARE(backend.lighting().value("effect").toString(), QString("static"));
+    }
+
+    void backendKeepsACopyOfTheScreenPicture()
+    {
+        QTemporaryDir dir;
+        Backend backend(nullptr, [] { return QList<HidNode>{}; }, dir.path(), false);
+        backend.adopt(new FakeKeyboard, "test"); // no screen
+        QVERIFY(!backend.setScreenPicture("/nonexistent.gif"));
+        QVERIFY(!backend.screen().value("available").toBool());
     }
 
     void wootingEncodesAnalogValues()

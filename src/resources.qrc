@@ -4,6 +4,11 @@
         <file alias="KeyboardView.qml">KeyboardView.qml</file>
         <file alias="SettingRow.qml">SettingRow.qml</file>
         <file alias="HelpOverlay.qml">HelpOverlay.qml</file>
+        <file alias="Chip.qml">Chip.qml</file>
+        <file alias="ColorPicker.qml">ColorPicker.qml</file>
+        <file alias="KeysPanel.qml">KeysPanel.qml</file>
+        <file alias="LightingPanel.qml">LightingPanel.qml</file>
+        <file alias="ScreenPanel.qml">ScreenPanel.qml</file>
         <file alias="i18n/en.json">i18n/en.json</file>
         <file alias="i18n/de.json">i18n/de.json</file>
     </qresource>
