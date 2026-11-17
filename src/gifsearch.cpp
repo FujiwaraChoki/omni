@@ -16,7 +16,9 @@
 #include <QUrlQuery>
 
 namespace {
-constexpr int kPage = 24;
+constexpr int kPage = 50;      // GIPHY's most per call
+constexpr int kStrip = 18;     // results a search tries to show
+constexpr int kReadAhead = 4;  // pages one search may use, of 100 calls an hour
 } // namespace
 
 GifSearch::GifSearch(Backend *backend, const QString &keyFile, QObject *parent)
@@ -91,9 +93,13 @@ QVariantList GifSearch::parse(const QByteArray &json, int *total) {
             file = images.value("downsized").toObject().value("url").toString();
         if (preview.isEmpty() || file.isEmpty())
             continue;
+        const QJsonObject original = images.value("original").toObject();
+        const QJsonObject shape = original.contains("width") ? original : images.value("fixed_width").toObject();
+        const double w = shape.value("width").toString().toDouble(), hgt = shape.value("height").toString().toDouble();
         rows << QVariantMap{{"id", gif.value("id").toString()}, {"title", gif.value("title").toString()},
                             {"preview", preview}, {"file", file},
-                            {"width", images.value("fixed_height_small").toObject().value("width").toString().toInt()}};
+                            {"width", images.value("fixed_height_small").toObject().value("width").toString().toInt()},
+                            {"aspect", hgt > 0 ? w / hgt : 1.0}};
     }
     return rows;
 }
@@ -101,17 +107,30 @@ QVariantList GifSearch::parse(const QByteArray &json, int *total) {
 void GifSearch::search(const QString &query) {
     m_query = query.trimmed();
     m_results.clear();
+    m_all.clear();
     m_total = 0;
+    m_nextOffset = 0;
     emit resultsChanged();
-    request(m_query, 0);
+    request(m_query, 0, kReadAhead, kStrip);
 }
 
 void GifSearch::loadMore() {
     if (!m_busy && canLoadMore())
-        request(m_query, int(m_results.size()));
+        request(m_query, m_nextOffset, kReadAhead, int(m_results.size()) + kStrip);
 }
 
-void GifSearch::request(const QString &query, int offset) {
+void GifSearch::setWideOnly(bool wide) {
+    if (wide == m_wideOnly)
+        return;
+    m_wideOnly = wide;
+    m_results.clear();
+    for (const auto &row : m_all)
+        if (!m_wideOnly || row.toMap().value("aspect").toDouble() >= kWide)
+            m_results << row;
+    emit resultsChanged();
+}
+
+void GifSearch::request(const QString &query, int offset, int pagesLeft, int wanted) {
     if (m_key.isEmpty())
         return;
     QUrl url(query.isEmpty() ? "https://api.giphy.com/v1/gifs/trending" : "https://api.giphy.com/v1/gifs/search");
@@ -126,9 +145,11 @@ void GifSearch::request(const QString &query, int offset) {
     setBusy(true);
     setError({});
     QNetworkReply *reply = m_network.get(QNetworkRequest(url));
-    connect(reply, &QNetworkReply::finished, this, [this, reply] {
+    connect(reply, &QNetworkReply::finished, this, [this, reply, query, offset, pagesLeft, wanted] {
         reply->deleteLater();
         setBusy(false);
+        if (query != m_query)
+            return; // an answer to a search the user has since replaced
         const int status = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
         if (status == 401 || status == 403) {
             setError(tr("GIPHY did not accept the key"));
@@ -143,9 +164,17 @@ void GifSearch::request(const QString &query, int offset) {
             return;
         }
         int total = 0;
-        m_results += parse(reply->readAll(), &total);
+        const QVariantList rows = parse(reply->readAll(), &total);
         m_total = total;
+        m_nextOffset = offset + kPage;
+        m_all += rows;
+        for (const auto &row : rows)
+            if (!m_wideOnly || row.toMap().value("aspect").toDouble() >= kWide)
+                m_results << row;
         emit resultsChanged();
+        // Read ahead while the strip is short and this search has pages left.
+        if (m_results.size() < wanted && pagesLeft > 1 && m_nextOffset < m_total && !rows.isEmpty())
+            request(query, m_nextOffset, pagesLeft - 1, wanted);
     });
 }
 

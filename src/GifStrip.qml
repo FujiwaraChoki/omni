@@ -76,9 +76,15 @@ ColumnLayout {
             placeholder: qsTr("Search GIPHY, then Enter")
             onAccepted: { gifs.search(text); input.focus = false }
         }
+        Chip {
+            text: qsTr("Wide only")
+            checked: gifs.wideOnly
+            onClicked: gifs.wideOnly = !gifs.wideOnly
+        }
         Label {
-            visible: gifs.busy
-            text: qsTr("Searching…")
+            text: gifs.busy ? qsTr("Searching…")
+                : gifs.wideOnly && gifs.scanned > 0 ? qsTr("%1 wide GIFs out of %2").arg(gifs.results.length).arg(gifs.scanned)
+                : ""
             color: "#6e6e76"
             font.pixelSize: 12
         }

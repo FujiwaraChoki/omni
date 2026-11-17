@@ -103,5 +103,7 @@
   "Could not download the GIF: %1": "Das GIF konnte nicht geladen werden: %1",
   "GIPHY sent something that isn't a GIF": "GIPHY hat kein GIF geschickt",
   "Could not save the GIF": "Das GIF konnte nicht gespeichert werden",
-  "GIF from GIPHY": "GIF von GIPHY"
+  "GIF from GIPHY": "GIF von GIPHY",
+  "Wide only": "Nur breite",
+  "%1 wide GIFs out of %2": "%1 breite GIFs von %2"
 }

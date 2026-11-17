@@ -457,7 +457,8 @@ private slots:
         // Built from objects rather than a raw string: moc misreads braces inside raw strings.
         const QJsonObject cat{{"id", "a1"}, {"title", "cat"}, {"images", QJsonObject{
             {"fixed_height_small", QJsonObject{{"url", "https://media2.giphy.com/media/a1/100.gif"}, {"width", "178"}}},
-            {"fixed_width", QJsonObject{{"url", "https://media2.giphy.com/media/a1/200w.gif"}}}}}};
+            {"fixed_width", QJsonObject{{"url", "https://media2.giphy.com/media/a1/200w.gif"}}},
+            {"original", QJsonObject{{"width", "480"}, {"height", "270"}}}}}};
         const QJsonObject bare{{"id", "b2"}, {"title", "no renditions"}, {"images", QJsonObject{}}};
         const QByteArray json = QJsonDocument(QJsonObject{{"data", QJsonArray{cat, bare}},
             {"pagination", QJsonObject{{"total_count", 512}, {"count", 2}, {"offset", 0}}}}).toJson();
@@ -467,6 +468,7 @@ private slots:
         QCOMPARE(rows.size(), 1);
         QCOMPARE(rows[0].toMap().value("file").toString(), QString("https://media2.giphy.com/media/a1/200w.gif"));
         QCOMPARE(rows[0].toMap().value("width").toInt(), 178);
+        QVERIFY(rows[0].toMap().value("aspect").toDouble() >= GifSearch::kWide); // 16:9 counts as wide
     }
 
     void giphyKeysAreCheckedAndPrivate()
