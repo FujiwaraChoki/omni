@@ -1,3 +1,10 @@
 {
-  "%n keys selected": { "one": "%n key selected", "other": "%n keys selected" }
+  "%n keys selected": {
+    "one": "%n key selected",
+    "other": "%n keys selected"
+  },
+  "%1 · %n frames": {
+    "one": "%1 · %n frame",
+    "other": "%1 · %n frames"
+  }
 }
