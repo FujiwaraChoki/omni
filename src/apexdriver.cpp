@@ -22,20 +22,19 @@ const quint8 kAnalog[] = {
 };
 constexpr int kAnalogCount = int(sizeof kAnalog);
 
-// Raw (actuation, reset) hall values for 0.1 mm .. 4.0 mm. PROVISIONAL: this
-// is the Apex Pro TKL 2023 table; it is replaced by values measured on the
-// Gen 3 from its own OLED menu before any actuation write is enabled.
-const quint8 kActuation[40][2] = {
-    {5, 5},     {5, 4},     {6, 5},     {8, 6},     {10, 8},    {12, 10},   {14, 12},   {16, 14},
-    {18, 16},   {21, 18},   {24, 21},   {27, 24},   {30, 27},   {33, 29},   {36, 33},   {39, 36},
-    {43, 40},   {47, 42},   {52, 47},   {57, 52},   {62, 57},   {68, 62},   {74, 68},   {81, 74},
-    {88, 81},   {95, 87},   {104, 95},  {114, 104}, {124, 114}, {134, 123}, {147, 134}, {161, 147},
-    {175, 161}, {189, 174}, {197, 189}, {206, 197}, {215, 206}, {224, 215}, {224, 217}, {224, 219},
+// The depths the keyboard's own OLED menu offers, with the raw hall values
+// (actuation, reset) it writes for each. Measured on a 0x1642 with firmware
+// 1.19.7 by stepping the menu and reading the board's reports (see
+// docs/protocol-steelseries-apex-gen3.md, "Measured actuation table"). Omni
+// offers exactly these depths and never invents values between them.
+struct Stop { double mm; quint8 actuation, reset; };
+const Stop kStops[] = {
+    {0.1, 4, 4},     {0.2, 4, 3},     {0.4, 7, 5},     {0.6, 10, 8},    {0.8, 13, 11},
+    {1.0, 17, 15},   {1.2, 22, 19},   {1.4, 27, 24},   {1.6, 34, 30},   {1.8, 40, 37},
+    {2.0, 49, 44},   {2.2, 59, 54},   {2.4, 72, 65},   {2.6, 86, 79},   {2.8, 103, 94},
+    {3.0, 124, 113}, {3.2, 148, 136}, {3.4, 180, 164}, {3.7, 209, 199}, {4.0, 219, 213},
 };
-
-// Off until kActuation holds this board's own values, so a wrong table can
-// never set the wrong travel.
-constexpr bool kActuationVerified = false;
+constexpr int kStopCount = int(sizeof kStops / sizeof kStops[0]);
 
 // The full LED list OpenRGB sends to this board (HID usages, plus 0xF0 Fn and 0xFB media key).
 const quint8 kLeds[] = {
@@ -88,6 +87,8 @@ bool ApexDriver::isAnalog(const QString &code) const {
 Capabilities ApexDriver::capabilities() const {
     Capabilities c;
     c.actuation = {0.1, 4.0, 0.1};
+    for (const auto &stop : kStops)
+        c.actuation.stops << stop.mm;
     c.sensitivity = {0.1, 1.0, 0.1};
     c.separateRelease = false;
     c.perKeyColor = true;
@@ -195,21 +196,45 @@ bool ApexDriver::readTable(quint8 table, quint8 layer, QByteArray *entries, QStr
 }
 
 QPair<quint8, quint8> ApexDriver::actuationRaw(double mm) {
-    const int index = qBound(0, int(std::lround(mm * 10)) - 1, 39);
-    return {kActuation[index][0], kActuation[index][1]};
+    const Stop *best = &kStops[0];
+    for (const auto &stop : kStops)
+        if (std::abs(stop.mm - mm) < std::abs(best->mm - mm))
+            best = &stop;
+    return {best->actuation, best->reset};
+}
+
+QPair<quint8, quint8> ApexDriver::rawFor(quint8 usage, double mm) const {
+    // The key's own value if it still shows as this depth, then a value read
+    // earlier that shows as it, then the menu's own depth.
+    const auto current = m_rawActuation.value(usage);
+    if (m_rawActuation.contains(usage) && qFuzzyCompare(actuationMm(current.first, current.second), mm))
+        return current;
+    const auto stop = actuationRaw(mm);
+    if (qFuzzyCompare(actuationMm(stop.first, stop.second), mm))
+        return stop;
+    return m_betweenStops.value(int(std::lround(mm * 10)), stop);
 }
 
 double ApexDriver::actuationMm(quint8 actuation, quint8 reset) {
-    // The nearest entry: exact for values this app or the OLED menu wrote.
-    int best = 0, bestDistance = INT_MAX;
-    for (int i = 0; i < 40; ++i) {
-        const int d = 4 * std::abs(kActuation[i][0] - actuation) + std::abs(kActuation[i][1] - reset);
-        if (d < bestDistance) {
-            best = i;
-            bestDistance = d;
+    // 0.1 and 0.2 mm share an actuation value and differ only in reset, so
+    // look for the exact pair first.
+    for (const auto &stop : kStops)
+        if (stop.actuation == actuation && stop.reset == reset)
+            return stop.mm;
+    // Exact for the menu's depths. A value set elsewhere (GG's finer steps)
+    // lands between two of them; show it interpolated to the nearest 0.1 mm.
+    if (actuation <= kStops[0].actuation)
+        return kStops[0].mm;
+    for (int i = 1; i < kStopCount; ++i) {
+        const Stop &lo = kStops[i - 1], &hi = kStops[i];
+        if (actuation <= hi.actuation) {
+            if (actuation == hi.actuation)
+                return hi.mm;
+            const double t = double(actuation - lo.actuation) / (hi.actuation - lo.actuation);
+            return std::round((lo.mm + t * (hi.mm - lo.mm)) * 10) / 10;
         }
     }
-    return (best + 1) / 10.0;
+    return kStops[kStopCount - 1].mm;
 }
 
 bool ApexDriver::read(Settings *settings, QString *error) {
@@ -224,6 +249,8 @@ bool ApexDriver::read(Settings *settings, QString *error) {
         const quint8 h = quint8(actuation[3 * i + 1]), l = quint8(actuation[3 * i + 2]);
         m_rawActuation[usage] = {h, l};
         k.actuation = actuationMm(h, l);
+        if (actuationRaw(k.actuation) != qMakePair(h, l))
+            m_betweenStops.insert(int(std::lround(k.actuation * 10)), {h, l});
         k.rapidTrigger = quint8(mode[2 * i + 1]) == 0x02;
         k.press = k.release = qBound(1, int(quint8(sensitivity[2 * i + 1])), 40) / 10.0;
     }
@@ -239,15 +266,11 @@ bool ApexDriver::write(const Settings &settings, int changes, QString *error) {
         if (const quint8 usage = hidUsage(it.key()))
             byUsage.insert(usage, it.value());
 
-    if ((changes & ActuationChange) && !kActuationVerified) {
-        if (error) *error = QStringLiteral("actuation for this keyboard is not calibrated yet");
-        return false;
-    }
     if (changes & ActuationChange) {
         QByteArray f = frame({0x00, 0x38, 0x61, kAnalogCount, 0x00}, kFeatureSize);
         for (int i = 0; i < kAnalogCount; ++i) {
             const quint8 usage = kAnalog[i];
-            const auto raw = byUsage.contains(usage) ? actuationRaw(byUsage[usage].actuation)
+            const auto raw = byUsage.contains(usage) ? rawFor(usage, byUsage[usage].actuation)
                                                      : m_rawActuation.value(usage, actuationRaw(1.8));
             m_rawActuation[usage] = raw;
             f[5 + 3 * i] = char(usage);

@@ -3,9 +3,12 @@
 #include "apexdriver.h"
 #include "wootingdriver.h"
 
+#include <algorithm>
 #include <cmath>
 
 double Range::snap(double v) const {
+    if (!stops.isEmpty())
+        return *std::min_element(stops.begin(), stops.end(), [v](double a, double b) { return std::abs(a - v) < std::abs(b - v); });
     const double snapped = min + std::round((v - min) / step) * step;
     // Round to the step's precision so 0.30000000000000004 reads as 0.3.
     return std::round(qBound(min, snapped, max) * 1000) / 1000;

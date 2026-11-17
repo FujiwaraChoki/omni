@@ -44,4 +44,8 @@ private:
     bool m_directMode = false;
     // Raw actuation pairs as last read, so keys the layout leaves out are sent back unchanged.
     QMap<quint8, QPair<quint8, quint8>> m_rawActuation;
+    // Raw values seen between the menu's depths (set by GG, say), by the tenth
+    // of a millimetre they show as, so choosing that depth again restores them.
+    QHash<int, QPair<quint8, quint8>> m_betweenStops;
+    QPair<quint8, quint8> rawFor(quint8 usage, double mm) const;
 };

@@ -172,6 +172,7 @@ QVariantMap Backend::capabilities() const {
     const Capabilities c = d->keyboard->capabilities();
     return {
         {"actuationMin", c.actuation.min}, {"actuationMax", c.actuation.max}, {"actuationStep", c.actuation.step},
+        {"actuationStops", QVariant::fromValue(QVariantList(c.actuation.stops.begin(), c.actuation.stops.end()))},
         {"sensitivityMin", c.sensitivity.min}, {"sensitivityMax", c.sensitivity.max}, {"sensitivityStep", c.sensitivity.step},
         {"separateRelease", c.separateRelease}, {"perKeyColor", c.perKeyColor},
     };

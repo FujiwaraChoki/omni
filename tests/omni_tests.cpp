@@ -100,11 +100,20 @@ private slots:
 
     void apexActuationRoundTrips()
     {
-        for (int tenths = 1; tenths <= 40; ++tenths) {
-            const auto raw = ApexDriver::actuationRaw(tenths / 10.0);
-            QCOMPARE(ApexDriver::actuationMm(raw.first, raw.second), tenths / 10.0);
+        // Every depth the keyboard's menu offers reads back as itself.
+        ApexDriver apex({});
+        const auto stops = apex.capabilities().actuation.stops;
+        QCOMPARE(stops.size(), 20);
+        for (double mm : stops) {
+            const auto raw = ApexDriver::actuationRaw(mm);
+            QCOMPARE(ApexDriver::actuationMm(raw.first, raw.second), mm);
         }
+        QCOMPARE(ApexDriver::actuationRaw(1.0), qMakePair(quint8(17), quint8(15)));
+        QCOMPARE(ApexDriver::actuationRaw(4.0), qMakePair(quint8(219), quint8(213)));
         QCOMPARE(ApexDriver::actuationRaw(9), ApexDriver::actuationRaw(4.0));
+        // A value set elsewhere, between two depths, is shown interpolated.
+        QCOMPARE(ApexDriver::actuationMm(8, 7), 0.5);
+        QCOMPARE(apex.capabilities().actuation.snap(3.6), 3.7);
     }
 
     void rangesSnap()
@@ -113,6 +122,8 @@ private slots:
         QCOMPARE(r.snap(0.34), 0.3);
         QCOMPARE(r.snap(9), 4.0);
         QCOMPARE(r.snap(-1), 0.1);
+        Range stops{0.1, 4.0, 0.1, {0.1, 0.2, 0.4}};
+        QCOMPARE(stops.snap(0.33), 0.4);
     }
 
     void backendEditsTheSelection()

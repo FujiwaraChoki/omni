@@ -31,8 +31,15 @@ ApplicationWindow {
     // One decimal unless the value sits between tenths (Wooting's 0.05 mm steps).
     function decimals(value) { return Math.abs(value * 10 - Math.round(value * 10)) > 0.001 ? 2 : 1 }
     function nudgeActuation(direction) {
-        if (analogSelected)
-            backend.setActuation((sel.actuation ?? caps.actuationMin) + direction * caps.actuationStep)
+        if (!analogSelected)
+            return
+        const current = sel.actuation ?? caps.actuationMin
+        // Keyboards with a fixed set of depths step to the next one of those.
+        const stops = (caps.actuationStops || []).filter(s => direction > 0 ? s > current + 0.001 : s < current - 0.001)
+        if (stops.length)
+            backend.setActuation(direction > 0 ? Math.min(...stops) : Math.max(...stops))
+        else if (!(caps.actuationStops || []).length)
+            backend.setActuation(current + direction * caps.actuationStep)
     }
     function nudgeSensitivity(direction) {
         if (analogSelected)

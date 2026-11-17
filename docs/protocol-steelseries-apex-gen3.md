@@ -723,3 +723,48 @@ bit 7 when it picks the tag, so block by `cmd & 0x7F` **and** by the exact byte.
 14. The unsolicited `0f`/`0d` reports on EP `0x85` are assumed to come from interface 4 (`0xFFC1`).
 15. The OLED image format on `0x1642` (column-packed) is undecoded.
 16. Firmware-update, factory-reset and recalibration opcodes are unknown, so treat every undecoded tag as unsafe.
+
+---
+
+## Measured on hardware (omni, 2026-11-17)
+
+Board: Apex Pro TKL Gen 3 wired, `0x1642`, firmware 1.19.7 (`90 01` build `+b2227e40`), region `F5` → 1 (US),
+layout `F2` → 0 (ANSI).
+
+### Confirmed commands
+
+| Command | Result |
+|---|---|
+| `90 00`, `90 01`, `F5`, `F2` (output, answered on input) | work as described in §1.5 |
+| `B8 61 <68> <layer>` / `B8 62 <68>` / `B8 65 <68>` (feature, then GET_FEATURE 645) | work; reply `00 B8 00 <sub> 44 [layer] entries…`, header 6 bytes for `61`, 5 for `62`/`65` |
+| `38 61`, `38 62`, `38 65` with all 68 keys (feature, 645) | accepted, take effect at once, read back exactly |
+
+Usages the ANSI board lacks (`0x32`, `0x64`, `0x87`-`0x8B`) read `(47, 42)` in `B8 61`.
+
+### Measured actuation table
+
+The OLED menu offers 20 depths. Each step makes the board send `0f <h> <l> <bitmask>` on interface 4 (`0xFFC1`), and
+`B8 61` reads the same pair back. Labels were read off the OLED while stepping one notch every few seconds.
+
+| mm | h | l | mm | h | l |
+|---:|---:|---:|---:|---:|---:|
+| 0.1 | 4 | 4 | 2.0 | 49 | 44 |
+| 0.2 | 4 | 3 | 2.2 | 59 | 54 |
+| 0.4 | 7 | 5 | 2.4 | 72 | 65 |
+| 0.6 | 10 | 8 | 2.6 | 86 | 79 |
+| 0.8 | 13 | 11 | 2.8 | 103 | 94 |
+| 1.0 | 17 | 15 | 3.0 | 124 | 113 |
+| 1.2 | 22 | 19 | 3.2 | 148 | 136 |
+| 1.4 | 27 | 24 | 3.4 | 180 | 164 |
+| 1.6 | 34 | 30 | 3.7 | 209 | 199 |
+| 1.8 | 40 | 37 | 4.0 | 219 | 213 |
+
+It differs from the `0x1628` table in §3.2 (for example 4.0 mm is `(219, 213)` here, `(224, 219)` there), as ssgg
+expected. The OLED shows the last depth chosen in its own menu, not one derived from the raw values: after a host
+write of `(10, 8)` it still showed 1.0, the depth last picked there. Values between these depths (the board held
+`(8, 7)`, probably set by GG at a finer step) are accepted and kept.
+
+### Still unknown
+
+- Rapid Trigger sensitivity range in the OLED menu (the value read 2 throughout).
+- Whether host writes survive a power cycle.

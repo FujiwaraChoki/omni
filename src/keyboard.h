@@ -27,6 +27,7 @@ using Settings = QHash<QString, KeySettings>; // by key code
 
 struct Range {
     double min = 0.1, max = 4.0, step = 0.1;
+    QList<double> stops; // when set, the only values the keyboard has
     double snap(double v) const;
 };
 
